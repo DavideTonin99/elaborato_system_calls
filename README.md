@@ -1,1 +1,4 @@
-# elaborato_system_calls
+# PROGETTO SYSTEM CALLS
+
+    Progetto: system calls
+    Corso: sistemi operativi
