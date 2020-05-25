@@ -1,6 +1,9 @@
 /// @file client.c
 /// @brief Contiene l'implementazione del client.
 
+#include "stdio.h"
+#include "stdlib.h"
+
 #include "defines.h"
 
 int main(int argc, char *argv[])
