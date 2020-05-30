@@ -11,7 +11,7 @@
 #include "semaphore.h"
 #include "fifo.h"
 
-void change_signal_handler()
+void changeSignalHandler()
 {
     sigset_t signals_set;
     if (sigfillset(&signals_set) == -1)
@@ -30,8 +30,7 @@ void change_signal_handler()
 
 void sigHandler(int sig)
 {
-    if (sig == SIGTERM)
-    {
+    if (sig == SIGTERM) {
         // terminazione di tutti i processi device
         // terminazione del processo ack_manager
         // chiusura di tutti i meccanismi di comunicazione/sincronizzazione tra processi
@@ -40,13 +39,12 @@ void sigHandler(int sig)
 
 int main(int argc, char *argv[])
 {
-    if (argc < 3)
-    {
+    if (argc < 3) {
         printf("Usage: %s msg_queue_key file_posizioni\n", argv[0]);
         return 0;
     }
 
-    change_signal_handler();
+    changeSignalHandler();
 
     return 0;
 }
