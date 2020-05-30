@@ -3,7 +3,7 @@
 
 #include "stdio.h"
 #include "stdlib.h"
-#include <signal.h>
+#include "signal.h"
 
 #include "err_exit.h"
 #include "defines.h"
@@ -39,7 +39,7 @@ void sigHandler(int sig)
 
 int main(int argc, char *argv[])
 {
-    if (argc < 3) {
+    if (argc != 3) {
         printf("Usage: %s msg_queue_key file_posizioni\n", argv[0]);
         return 0;
     }
