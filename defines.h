@@ -22,3 +22,5 @@ typedef struct
     int message_id;
     time_t timestamp;
 } Acknowledgment;
+
+void printDebugMessage(Message *msg);
