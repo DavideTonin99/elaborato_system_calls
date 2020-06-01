@@ -6,6 +6,9 @@
 
 #include <sys/types.h>
 
+#define N_DEVICES 5
+#define RESPONSE_MTYPE 1
+
 typedef struct
 {
     pid_t pid_sender;
@@ -23,4 +26,22 @@ typedef struct
     time_t timestamp;
 } Acknowledgment;
 
+// contiene la lista di Acknowledgment
+typedef struct
+{
+    long mtype;
+    Acknowledgment ack[N_DEVICES];
+} Response;
+
+/**
+ * printDebugMessage: funzione di DEBUG, stampa il messaggio
+ * @param msg: messaggio
+ */
 void printDebugMessage(Message *msg);
+
+/**
+ * writeOutAck: scrive su file la lista di ack
+ * @param msg: messaggio inviato dal client
+ * @param response: la risposta con la lista di ack da parte del server
+ */
+void writeOutAck(Message *msg, Response *response);

@@ -145,5 +145,14 @@ int main(int argc, char *argv[])
     if (msq_id == -1)
         ErrExit("msgget failed");
 
+    Response response;
+    size_t mSize = (sizeof(Acknowledgment)*N_DEVICES) - sizeof(long);
+    // di default, msgrcv è bloccante quindi se non ci sono messaggi si ferma ad aspettare
+    // aspetta la risposta del server
+    if (msgrcv(msqid, &response, mSize, RESPONSE_MTYPE, 0) == -1)
+        ErrExit("msgrcv failed");
+
+    writeOutAck(&msg, &response);
+
     return 0;
 }

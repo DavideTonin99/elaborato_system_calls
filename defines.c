@@ -20,3 +20,25 @@ void printDebugMessage(Message *msg)
         printf("Messaggio non valido!\n");
     }
 }
+
+void writeOutAck(Message *msg, Response *response)
+{
+    if (response) {
+        char *path_to_fileout;
+        sprintf(path_to_fileout, "%s%d", "out_", msg->message_id);
+        sprintf(path_to_fileout, "%s%s", path_to_fileout, ".txt");
+        
+        printf("Apertura file out '%s'...", path_to_fileout);
+        fd_out = open(path_to_fileout, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR);
+        if (fd_out == -1)
+            ErrExit("open file out failed");
+
+        for (Acknowledgment ack = response->ack; *ack != NULL; ++ack) {
+            // TODO scrittura su file
+            printf("%d\n", ack->timestamp);
+        }
+
+        if (close(fd_out) == -1)
+            ErrExit("close file out failed");
+    }
+}

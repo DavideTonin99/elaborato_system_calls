@@ -16,10 +16,10 @@ void sigHandler(int sig)
     if (sig == SIGTERM) {
         // TODO: chiusura di tutti i meccanismi di comunicazione/sincronizzazione tra processi
 
+        printf("Server close processes and exit...\n", getpid());
+
         // terminazione processo server e figli
         kill(-getpid(), sig);
-
-        printf("Server (pid = %d) exit\n", getpid());
         exit(0);
     }
 }
