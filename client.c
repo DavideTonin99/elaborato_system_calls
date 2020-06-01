@@ -77,6 +77,9 @@ void sendMessage(Message *msg)
     // Invia il messaggio al device
     if (write(device_fifo, msg, sizeof(Message)) != sizeof(Message))
         ErrExit("write message failed");
+    
+    if (close(device_fifo))
+        ErrExit("close device fifo failed");
 }
 
 int main(int argc, char *argv[])
@@ -153,6 +156,10 @@ int main(int argc, char *argv[])
         ErrExit("msgrcv failed");
 
     writeOutAck(&msg, &response);
+
+    if (fd_input)
+        if (close(fd_input))
+            ErrExit("close file input failed");
 
     return 0;
 }
