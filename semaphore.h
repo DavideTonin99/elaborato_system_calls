@@ -4,7 +4,6 @@
 
 #pragma once
 #include "sys/sem.h"
-#include "sys/semaphore.h"
 
 // definizione union semun
 union semun {
