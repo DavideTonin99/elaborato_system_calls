@@ -33,7 +33,7 @@ Una volta generato il file di output il client termina.
 #include "err_exit.h"
 #include "defines.h"
 
-char *base_path_to_server_fifo = "/tmp/dev_fifo.";
+char *base_path_to_device_fifo = "/tmp/dev_fifo.";
 
 int readInt(const char *buffer) 
 {
@@ -80,16 +80,11 @@ int main(int argc, char *argv[])
     }
 
     // Legge e controlla la chiave della message queue
-    // int msg_queue_key = atoi(argv[1]);
-    // if (msg_queue_key <= 0) {
-    //     printf("The message queue key must be greater than zero!\n");
-    //     exit(1);
-    // }
-
-    // // Get identificatore message queue
-    // int msq_id = msgget(msg_queue_key, S_IRUSR | S_IWUSR);
-    // if (msq_id == -1)
-    //     ErrExit("msgget failed");
+    int msg_queue_key = atoi(argv[1]);
+    if (msg_queue_key <= 0) {
+        printf("The message queue key must be greater than zero!\n");
+        exit(1);
+    }
 
     // Crea un messaggio
     Message msg;
@@ -119,6 +114,24 @@ int main(int argc, char *argv[])
     msg.pid_sender = getpid();
 
     printDebugMessage(&msg);
+
+    // Apre la FIFO per inviare il messaggio al device
+    char *path_to_device_fifo;
+    sprintf(path_to_device_fifo, "%s%d", base_path_to_device_fifo, msg.pid_receiver);
+    
+    int device_fifo = open(path_to_device_fifo, O_WRONLY);
+    if (device_fifo == -1)
+        ErrExit("open device fifo failed");
+    
+    printf("Sending the message to device %d...", msg.pid_receiver);
+    // Invia il messaggio al device
+    if (write(device_fifo, &msg, sizeof(Message)) != sizeof(Message))
+        ErrExit("write message failed");
+    
+    // Get identificatore message queue
+    int msq_id = msgget(msg_queue_key, S_IRUSR | S_IWUSR);
+    if (msq_id == -1)
+        ErrExit("msgget failed");
 
     return 0;
 }
