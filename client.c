@@ -6,16 +6,30 @@
 #include "sys/msg.h"
 #include "string.h"
 #include "sys/stat.h"
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "err_exit.h"
 #include "defines.h"
 
+char *base_path_to_server_fifo = "/tmp/dev_fifo.";
+
 int main(int argc, char *argv[])
 {
     // Controlla gli argomenti da linea di comando
-    if (argc != 2) {
-        printf("Usage: %s msg_queue_key\n", argv[0]);
+    if (argc < 2 || argc > 3) {
+        printf("Usage: %s msg_queue_key [input_filename]\n", argv[0]);
         exit(1);
+    }
+
+    char *input_filename;
+    if (argc == 3) 
+    {
+        // se c'è il file in input, lo usa come standard input
+        close(STDIN_FILENO);
+        int fd = open(argv[2], O_RDONLY);
+        if (fd == -1)
+            ErrExit("open input file failed");
     }
 
     // Legge e controlla la chiave della message queue
@@ -34,6 +48,7 @@ int main(int argc, char *argv[])
     Message msg;
 
     printf("Insert pid receiver device: ");
+    scanf();
     printf("Insert message id: ");
     printf("Insert message: ");
     printf("Insert max distance: ");
