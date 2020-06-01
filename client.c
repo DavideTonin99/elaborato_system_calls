@@ -63,6 +63,22 @@ double readDouble(const char *buffer)
     return res;
 }
 
+void sendMessage(Message *msg)
+{
+    // Apre la FIFO per inviare il messaggio al device
+    char *path_to_device_fifo;
+    sprintf(path_to_device_fifo, "%s%d", base_path_to_device_fifo, msg->pid_receiver);
+    
+    int device_fifo = open(path_to_device_fifo, O_WRONLY);
+    if (device_fifo == -1)
+        ErrExit("open device fifo failed");
+    
+    printf("Sending the message %d to device %d...", msg->message_id, msg->pid_receiver);
+    // Invia il messaggio al device
+    if (write(device_fifo, msg, sizeof(Message)) != sizeof(Message))
+        ErrExit("write message failed");
+}
+
 int main(int argc, char *argv[])
 {
     // Controlla gli argomenti da linea di comando
@@ -71,11 +87,12 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    int fd_input = NULL;
     if (argc == 3) {
         // se c'è il file in input, lo usa come standard input
         close(STDIN_FILENO);
-        int fd = open(argv[2], O_RDONLY);
-        if (fd == -1)
+        fd_input = open(argv[2], O_RDONLY);
+        if (fd_input == -1)
             ErrExit("open input file failed");
     }
 
@@ -93,20 +110,27 @@ int main(int argc, char *argv[])
     size_t len;
 
     // Legge il pid del device ricevente
-    printf("Insert pid receiver device: ");
+    if (fd_input)
+        printf("Lettura input messaggio dal file %s ...\n", argv[2]);
+
+    if (!fd_input)
+        printf("Insert pid receiver device: ");
     fgets(buffer, sizeof(buffer), stdin);
     msg.pid_receiver = readInt(buffer);
 
-    printf("Insert message id: ");
+    if (!fd_input)
+        printf("Insert message id: ");
     fgets(buffer, sizeof(buffer), stdin);
     msg.message_id = readInt(buffer);
 
-    printf("Insert message: ");
+    if (!fd_input)
+        printf("Insert message: ");
     fgets(msg.message, sizeof(msg.message), stdin);
     len = strlen(msg.message);
     msg.message[len - 1] = '\0';
 
-    printf("Insert max distance: ");
+    if (!fd_input)
+        printf("Insert max distance: ");
     fgets(buffer, sizeof(buffer), stdin);
     msg.max_distance = readDouble(buffer);
 
@@ -114,19 +138,7 @@ int main(int argc, char *argv[])
     msg.pid_sender = getpid();
 
     printDebugMessage(&msg);
-
-    // Apre la FIFO per inviare il messaggio al device
-    char *path_to_device_fifo;
-    sprintf(path_to_device_fifo, "%s%d", base_path_to_device_fifo, msg.pid_receiver);
-    
-    int device_fifo = open(path_to_device_fifo, O_WRONLY);
-    if (device_fifo == -1)
-        ErrExit("open device fifo failed");
-    
-    printf("Sending the message to device %d...", msg.pid_receiver);
-    // Invia il messaggio al device
-    if (write(device_fifo, &msg, sizeof(Message)) != sizeof(Message))
-        ErrExit("write message failed");
+    sendMessage(&msg);
     
     // Get identificatore message queue
     int msq_id = msgget(msg_queue_key, S_IRUSR | S_IWUSR);
