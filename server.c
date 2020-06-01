@@ -11,6 +11,15 @@
 #include "semaphore.h"
 #include "fifo.h"
 
+void sigHandler(int sig)
+{
+    if (sig == SIGTERM) {
+        // terminazione di tutti i processi device
+        // terminazione del processo ack_manager
+        // chiusura di tutti i meccanismi di comunicazione/sincronizzazione tra processi
+    }
+}
+
 void changeSignalHandler()
 {
     sigset_t signals_set;
@@ -26,15 +35,6 @@ void changeSignalHandler()
 
     if (signal(SIGTERM, sigHandler) == SIG_ERR)
         ErrExit("change signal handler failed");
-}
-
-void sigHandler(int sig)
-{
-    if (sig == SIGTERM) {
-        // terminazione di tutti i processi device
-        // terminazione del processo ack_manager
-        // chiusura di tutti i meccanismi di comunicazione/sincronizzazione tra processi
-    }
 }
 
 int main(int argc, char *argv[])
