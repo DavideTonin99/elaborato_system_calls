@@ -5,18 +5,18 @@ OBJDIR   = obj
 SERVER_SRCS = defines.c err_exit.c shared_memory.c semaphore.c fifo.c server.c
 SERVER_OBJS = $(addprefix $(OBJDIR)/, $(SERVER_SRCS:.c=.o))
 
-CLIENT_SRCS = client.c
+CLIENT_SRCS = client.c err_exit.c defines.c
 CLIENT_OBJS = $(addprefix $(OBJDIR)/, $(CLIENT_SRCS:.c=.o))
 
 all: $(OBJDIR) server client
 
 server: $(SERVER_OBJS)
 	@echo "Making executable: "$@
-	@$(CC) $^ -o $@  -lm
+	@$(CC) $^ -o $@
 
 client: $(CLIENT_OBJS)
 	@echo "Making executable: "$@
-	@$(CC) $^ -o $@  -lm
+	@$(CC) $^ -o $@
 
 $(OBJDIR):
 	@mkdir -p $(OBJDIR)
