@@ -14,9 +14,13 @@
 void sigHandler(int sig)
 {
     if (sig == SIGTERM) {
-        // terminazione di tutti i processi device
-        // terminazione del processo ack_manager
-        // chiusura di tutti i meccanismi di comunicazione/sincronizzazione tra processi
+        // TODO: chiusura di tutti i meccanismi di comunicazione/sincronizzazione tra processi
+
+        // terminazione processo server e figli
+        kill(-getpid(), sig);
+
+        printf("Server (pid = %d) exit\n", getpid());
+        exit(0);
     }
 }
 
