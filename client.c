@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
     size_t mSize = (sizeof(Acknowledgment)*N_DEVICES) - sizeof(long);
     // di default, msgrcv è bloccante quindi se non ci sono messaggi si ferma ad aspettare
     // aspetta la risposta del server
-    if (msgrcv(msqid, &response, mSize, RESPONSE_MTYPE, 0) == -1)
+    if (msgrcv(msq_id, &response, mSize, msg.message_id, 0) == -1)
         ErrExit("msgrcv failed");
 
     writeOutAck(&msg, &response);
