@@ -89,6 +89,16 @@ void initDevices(int devices)
             execDevice(i, semid, board_shm_ptr);
         }
     }
+
+    // genera l'ack_manager
+    if (pid != 0) {
+        pid = fork();
+        if (pid == -1) {
+            ErrExit("ack_manager not created!");
+        } else if (pid == 0) {
+            // ack_manager
+        }
+    }
 }
 
 int main(int argc, char *argv[])
