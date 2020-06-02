@@ -13,6 +13,7 @@
 #include "shared_memory.h"
 #include "semaphore.h"
 #include "fifo.h"
+#include "device.h"
 
 int semid = -1;
 // id shared memory
@@ -76,6 +77,20 @@ void printBoard(pid_t *board_ptr)
     printf("%s\n", divider);
 }
 
+void initDevices(int devices)
+{
+    pid_t pid;
+    for (int i = 0; i < devices; i++) {
+        pid = fork();
+        if (pid == -1) {
+            printf("child %d not created!", i);
+            exit(0);
+        } else if (pid == 0) {
+            execDevice(i, semid, board_shm_ptr);
+        }
+    }
+}
+
 int main(int argc, char *argv[])
 {
     if (argc != 3) {
@@ -106,6 +121,8 @@ int main(int argc, char *argv[])
     board_shm_ptr = (pid_t *)getSharedMemory(board_shmid, 0);
 
     printBoard(board_shm_ptr);
+
+    initDevices(N_DEVICES);
 
     freeResources();
 
