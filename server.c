@@ -23,13 +23,13 @@ int *acklist_shm_ptr;
 void sigHandler(int sig)
 {
     if (sig == SIGTERM) {
-        // TODO: chiusura di tutti i meccanismi di comunicazione/sincronizzazione tra processi
+        printf("Server free resources...\n", getpid());
+        // chiusura di tutti i meccanismi di comunicazione/sincronizzazione tra processi
         removeSemaphoreSet(semid);
         freeSharedMemory(board_shmid);
         removeSharedMemory(board_shm_ptr);
 
         printf("Server close processes and exit...\n", getpid());
-
         // terminazione processo server e figli
         kill(-getpid(), sig);
         exit(0);
@@ -74,11 +74,13 @@ int main(int argc, char *argv[])
     if (file_pos == -1)
         ErrExit("open file posizioni failed");
 
+    printf("Inizializzazione semafori...\n");
     semid = initSemaphoreSet(N_DEVICES+2, N_DEVICES);
 
+    printf("Inizializzazione memoria condivisa...\n");
     // Crea i segmenti di memoria condivisa
     board_shmid = allocSharedMemory(IPC_PRIVATE, sizeof(int) * ROWS * COLS);
-    board_shm_ptr = getSharedMemory(board_shmid, 0);
+    board_shm_ptr = (int *)getSharedMemory(board_shmid, 0);
 
     return 0;
 }
