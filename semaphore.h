@@ -19,3 +19,17 @@ union semun {
  * @param sem_op: operazione da eseguire sul semaforo semn_num
  */
 void semOp(int semid, unsigned short sem_num, short sem_op);
+
+/**
+ * initSemaphoreSet: crea e inizializza un set di semafori
+ * @param length: numero di semafori
+ * @param devices: numero di device
+ * @return semid: identificatore del set di semafori creato
+ */
+int initSemaphoreSet(int length, int devices);
+
+/**
+ * removeSemaphoreSet: rimuove il set di semafori indicato da semid
+ * @param semid: identificatore del set di semafori
+ */
+void removeSemaphoreSet(int semid);
