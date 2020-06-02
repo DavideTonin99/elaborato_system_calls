@@ -5,6 +5,8 @@
 #include "stdlib.h"
 #include "signal.h"
 #include "fcntl.h"
+#include "unistd.h"
+#include "string.h"
 
 #include "err_exit.h"
 #include "defines.h"
@@ -17,19 +19,24 @@ int semid = -1;
 int board_shmid;
 int acklist_shmid;
 // ptr shared memory
-int *board_shm_ptr;
+pid_t *board_shm_ptr;
 int *acklist_shm_ptr;
+
+void freeResources()
+{        
+    printf("Server free resources...\n");
+    // chiusura di tutti i meccanismi di comunicazione/sincronizzazione tra processi
+    removeSemaphoreSet(semid);
+    freeSharedMemory(board_shm_ptr);
+    removeSharedMemory(board_shmid);
+}
 
 void sigHandler(int sig)
 {
     if (sig == SIGTERM) {
-        printf("Server free resources...\n", getpid());
-        // chiusura di tutti i meccanismi di comunicazione/sincronizzazione tra processi
-        removeSemaphoreSet(semid);
-        freeSharedMemory(board_shmid);
-        removeSharedMemory(board_shm_ptr);
+        freeResources();
 
-        printf("Server close processes and exit...\n", getpid());
+        printf("Server close processes and exit...\n");
         // terminazione processo server e figli
         kill(-getpid(), sig);
         exit(0);
@@ -51,6 +58,22 @@ void changeSignalHandler()
 
     if (signal(SIGTERM, sigHandler) == SIG_ERR)
         ErrExit("change signal handler failed");
+}
+
+void printBoard(pid_t *board_ptr) 
+{
+    char divider[8 * (BOARD_COLS+1)];
+    memset(divider, '-', sizeof(divider));
+    printf("%s\n", divider);
+
+    for (int row = 0; row < BOARD_ROWS; row++) {
+        for (int col = 0; col < BOARD_COLS; col++) {
+            int offset = row * BOARD_COLS + col;
+            printf("%8d", board_ptr[offset]);
+        }
+        printf("\n");
+    }
+    printf("%s\n", divider);
 }
 
 int main(int argc, char *argv[])
@@ -79,8 +102,12 @@ int main(int argc, char *argv[])
 
     printf("Inizializzazione memoria condivisa...\n");
     // Crea i segmenti di memoria condivisa
-    board_shmid = allocSharedMemory(IPC_PRIVATE, sizeof(int) * ROWS * COLS);
-    board_shm_ptr = (int *)getSharedMemory(board_shmid, 0);
+    board_shmid = allocSharedMemory(IPC_PRIVATE, sizeof(int) * BOARD_ROWS * BOARD_COLS);
+    board_shm_ptr = (pid_t *)getSharedMemory(board_shmid, 0);
+
+    printBoard(board_shm_ptr);
+
+    freeResources();
 
     return 0;
 }

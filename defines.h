@@ -10,8 +10,8 @@
 #define N_DEVICES 5
 
 // -- board settings
-#define ROWS 10
-#define COLS 10
+#define BOARD_ROWS 10
+#define BOARD_COLS 10
 
 typedef struct
 {
