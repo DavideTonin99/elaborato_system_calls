@@ -66,7 +66,7 @@ double readDouble(const char *buffer)
 void sendMessage(Message *msg)
 {
     // Apre la FIFO per inviare il messaggio al device
-    char *path_to_device_fifo = "";
+    char path_to_device_fifo[25];
     sprintf(path_to_device_fifo, "%s%d", base_path_to_device_fifo, msg->pid_receiver);
     
     int device_fifo = open(path_to_device_fifo, O_WRONLY);
