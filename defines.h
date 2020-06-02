@@ -6,8 +6,12 @@
 
 #include <sys/types.h>
 
+// -- numero di device
 #define N_DEVICES 5
-#define RESPONSE_MTYPE 1
+
+// -- board settings
+#define ROWS 10
+#define COLS 10
 
 typedef struct
 {

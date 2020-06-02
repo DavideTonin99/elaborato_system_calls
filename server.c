@@ -4,6 +4,7 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "signal.h"
+#include "fcntl.h"
 
 #include "err_exit.h"
 #include "defines.h"
@@ -11,10 +12,21 @@
 #include "semaphore.h"
 #include "fifo.h"
 
+int semid = -1;
+// id shared memory
+int board_shmid;
+int acklist_shmid;
+// ptr shared memory
+int *board_shm_ptr;
+int *acklist_shm_ptr;
+
 void sigHandler(int sig)
 {
     if (sig == SIGTERM) {
         // TODO: chiusura di tutti i meccanismi di comunicazione/sincronizzazione tra processi
+        removeSemaphoreSet(semid);
+        freeSharedMemory(board_shmid);
+        removeSharedMemory(board_shm_ptr);
 
         printf("Server close processes and exit...\n", getpid());
 
@@ -48,7 +60,25 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    // Legge e controlla la chiave della message queue
+    int msg_queue_key = atoi(argv[1]);
+    if (msg_queue_key <= 0) {
+        printf("The message queue key must be greater than zero!\n");
+        exit(1);
+    }
+
     changeSignalHandler();
+
+    // Apre il file posizioni
+    int file_pos = open(argv[2], O_RDONLY);
+    if (file_pos == -1)
+        ErrExit("open file posizioni failed");
+
+    semid = initSemaphoreSet(N_DEVICES+2, N_DEVICES);
+
+    // Crea i segmenti di memoria condivisa
+    board_shmid = allocSharedMemory(IPC_PRIVATE, sizeof(int) * ROWS * COLS);
+    board_shm_ptr = getSharedMemory(board_shmid, 0);
 
     return 0;
 }
