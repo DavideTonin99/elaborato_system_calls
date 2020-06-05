@@ -23,7 +23,7 @@ void semOp(int semid, unsigned short sem_num, short sem_op)
 int initSemaphoreSet(int length, int devices) 
 {
     // Crea un set di 'length' semafori
-    int semid = semget(IPC_PRIVATE, length, S_IRUSR | S_IWUSR);
+    int semid = semget(IPC_PRIVATE, length, S_IRUSR | S_IWUSR | S_IWGRP);
     if (semid == -1)
         ErrExit("semget failed");
 
@@ -48,6 +48,6 @@ int initSemaphoreSet(int length, int devices)
 
 void removeSemaphoreSet(int semid)
 {
-    if (semctl(semid, 0, IPC_RMID, NULL) == -1)
+    if (semctl(semid, 0 /* ignored */, IPC_RMID, NULL) == -1)
         ErrExit("semctl IPC_RMID failed");
 }

@@ -27,6 +27,7 @@ void freeResources()
 {        
     printf("Server free resources...\n");
     // chiusura di tutti i meccanismi di comunicazione/sincronizzazione tra processi
+    printf("<server> semid %d\n", semid);
     removeSemaphoreSet(semid);
     freeSharedMemory(board_shm_ptr);
     removeSharedMemory(board_shmid);
@@ -36,7 +37,6 @@ void sigHandler(int sig)
 {
     if (sig == SIGTERM) {
         freeResources();
-
         printf("Server close processes and exit...\n");
         // terminazione processo server e figli
         kill(-getpid(), sig);
@@ -46,6 +46,7 @@ void sigHandler(int sig)
 
 void changeSignalHandler()
 {
+    printf("Changing signal handler...\n");
     sigset_t signals_set;
     if (sigfillset(&signals_set) == -1)
         ErrExit("sigfillset failed");
@@ -134,7 +135,9 @@ int main(int argc, char *argv[])
 
     initDevices(N_DEVICES);
 
-    freeResources();
+    while(1) {
 
+    }
+    
     return 0;
 }

@@ -33,7 +33,7 @@ Una volta generato il file di output il client termina.
 #include "err_exit.h"
 #include "defines.h"
 
-char *base_path_to_device_fifo = "/tmp/dev_fifo.";
+const char *base_path_to_device_fifo = "/tmp/dev_fifo.";
 
 int readInt(const char *buffer) 
 {
