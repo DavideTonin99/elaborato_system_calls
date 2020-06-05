@@ -23,14 +23,14 @@ void semOp(int semid, unsigned short sem_num, short sem_op)
 int initSemaphoreSet(int length, int devices) 
 {
     // Crea un set di 'length' semafori
-    int semid = semget(IPC_PRIVATE, length, S_IRUSR | S_IWUSR | S_IWGRP);
+    int semid = semget(IPC_PRIVATE, length, S_IRUSR | S_IWUSR);
     if (semid == -1)
         ErrExit("semget failed");
 
     // Inizializza i semafori
     // I primi 'devices' semafori sono per i device
-    // Il penultimo semaforo gestisce la lista di acknowledgments
-    // L'ultimo semaforo gestisce l'accesso alla scacchiera
+    // Il penultimo semaforo gestisce l'accesso alla scacchiera
+    // L'ultimo semaforo gestisce la lista di acknowledgments
     unsigned short sem_init_values[length];
     int i = 0;
     for (i = 0; i < devices; i++)

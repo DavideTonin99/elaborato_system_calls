@@ -70,8 +70,9 @@ void changeSignalHandler()
         ErrExit("<server> change signal handler failed");
 }
 
-void printBoard(pid_t *board_ptr) 
+void printBoard(int i) 
 {
+    printf("Iteration: %d\n", i);
     char divider[8 * (BOARD_COLS+1)];
     memset(divider, '-', sizeof(divider));
     printf("%s\n", divider);
@@ -79,14 +80,14 @@ void printBoard(pid_t *board_ptr)
     for (int row = 0; row < BOARD_ROWS; row++) {
         for (int col = 0; col < BOARD_COLS; col++) {
             int offset = row * BOARD_COLS + col;
-            printf("%8d", board_ptr[offset]);
+            printf("%8d", board_shm_ptr[offset]);
         }
         printf("\n");
     }
     printf("%s\n", divider);
 }
 
-void initDevices(int devices)
+void initDevices(int devices, const char *path_to_position_file)
 {
     pid_t pid;
     for (int i = 0; i < devices; i++) {
@@ -95,7 +96,7 @@ void initDevices(int devices)
             printf("child %d not created!", i);
             exit(0);
         } else if (pid == 0) {
-            execDevice(i, semid, board_shm_ptr);
+            execDevice(i, semid, board_shm_ptr, path_to_position_file);
         }
     }
 
@@ -139,11 +140,16 @@ int main(int argc, char *argv[])
     board_shmid = allocSharedMemory(IPC_PRIVATE, sizeof(int) * BOARD_ROWS * BOARD_COLS);
     board_shm_ptr = (pid_t *)getSharedMemory(board_shmid, 0);
 
-    printBoard(board_shm_ptr);
+    initDevices(N_DEVICES, argv[2]);
 
-    initDevices(N_DEVICES);
-
-    while (1);
+    int i = 0;
+    while (1) {
+        semOp(semid, N_DEVICES, -1);
+        sleep(2);
+        printBoard(i);
+        i++;
+        kill(getpid(), SIGTERM);
+    }
 
     return 0;
 }
