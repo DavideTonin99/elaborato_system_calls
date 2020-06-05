@@ -25,7 +25,7 @@ void removeFIFO() {
 
 void deviceSigHandler(int sig)
 {
-    if (sig == SIGTERM) {
+    if (sig == SIGTERM || sig == SIGINT) {
         printf("<device pid: %d>remove resources and exit...\n", getpid());
         removeFIFO();
         exit(0);
@@ -41,12 +41,17 @@ void changeDeviceSignalHandler()
 
     // rimuove SIGTERM
     sigdelset(&signals_set, SIGTERM);
+    sigdelset(&signals_set, SIGINT); // per DEBUG
 
     // blocca tutti i segnali, tranne SIGTERM che è stato rimosso
     if (sigprocmask(SIG_SETMASK, &signals_set, NULL) == -1)
         ErrExit("<device> sigprocmask failed");
 
     if (signal(SIGTERM, deviceSigHandler) == SIG_ERR)
+        ErrExit("<device> change signal handler failed");
+
+    // DEBUG
+    if (signal(SIGINT, deviceSigHandler) == SIG_ERR)
         ErrExit("<device> change signal handler failed");
 }
 
