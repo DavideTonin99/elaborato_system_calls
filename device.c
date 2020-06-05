@@ -4,30 +4,37 @@
 #include "unistd.h"
 #include "fcntl.h"
 #include "sys/stat.h"
+#include "string.h"
 
 #include "defines.h"
 #include "err_exit.h"
 #include "device.h"
 
+#define ROW_BUFFER_SIZE 50
+
 int id_device; 
 
 const char *base_path_to_device_fifo = "/tmp/dev_fifo.";
 char path_to_device_fifo[25];
+int fd_device_fifo;
 int position_fd;
 
-void removeFIFO() {
+void freeDeviceResources() 
+{
+    if (close(fd_device_fifo) == -1)
+        ErrExit("<device> close device fifo failed");
     if(unlink(path_to_device_fifo) == -1)
         ErrExit("<device> unlink fifo failed");
-    
     if(close(position_fd) == -1)
-        ErrExit("<device> close fifo failed");
+        ErrExit("<device> close position file failed");
+
 }
 
 void deviceSigHandler(int sig)
 {
     if (sig == SIGTERM || sig == SIGINT) {
         printf("<device pid: %d>remove resources and exit...\n", getpid());
-        removeFIFO();
+        freeDeviceResources();
         exit(0);
     }
 }
@@ -55,9 +62,58 @@ void changeDeviceSignalHandler()
         ErrExit("<device> change signal handler failed");
 }
 
-void execDevice(int _id_device, int semid, pid_t *board_shm_ptr) {
-    printf("<device pid: %d, id: %d> Created !!!\n", getpid(), id_device);
+void readNextLine(char *next_line) 
+{
+    // contiene la riga successiva
+    // ogni valore può essere di due cifre, due per ogni device, per N_DEVICES + le pipe come divisori di coordinate
+    char row[ROW_BUFFER_SIZE] = {0};
+    // contiene byte successivo
+    char buffer[2] = {0};
+
+    while(read(position_fd, buffer, 1) != 0 && strcmp(buffer, "\n") != 0)
+        strcat(row, buffer);
+
+    // se è finito il file, ricomincia da capo    
+    if(strlen(row) == 0){
+        lseek(position_fd, 0, SEEK_SET); 
+        readNextLine(next_line);
+    } else {
+        memcpy(next_line, row, strlen(row)+1);
+    }
+}
+
+void getNextPosition(char *next_line, Position *next_position)
+{
+    for (int cont_pipes = 0; cont_pipes < id_device && *next_line != '\0'; next_line++) {
+        if (*next_line == '|')
+            cont_pipes++;
+    }
+
+    // prende il valore della riga
+    char buffer[ROW_BUFFER_SIZE];
+    int index;
+    
+    for(index = 0; *next_line != ','; next_line++, index++)
+        buffer[index] = *next_line;
+    
+    next_position->row = atoi(buffer);
+    // salta la virgola
+    next_line++; 
+
+    // reset buffer
+    memset(buffer, 0, sizeof(buffer));     
+    
+    // prende il valore della colonna
+    for(index = 0; *next_line != '\0' && *next_line != '|'; next_line++, index++)
+        buffer[index] = *next_line;
+    
+    next_position->col = atoi(buffer);
+    // printf("<device pid: %d, id: %d> (%d,%d)\n", getpid(), id_device, next_position->row, next_position->col);
+}
+
+void execDevice(int _id_device, int semid, pid_t *board_shm_ptr, const char *path_to_position_file) {
     id_device = _id_device;
+    printf("<device pid: %d, id: %d> Created !!!\n", getpid(), _id_device);
 
     changeDeviceSignalHandler();
 
@@ -68,14 +124,19 @@ void execDevice(int _id_device, int semid, pid_t *board_shm_ptr) {
     if (res_device_fifo == -1)
         ErrExit("<device> mkfifo failed");
 
-    int fd_device_fifo = open(path_to_device_fifo, O_RDONLY | O_NONBLOCK);
+    fd_device_fifo = open(path_to_device_fifo, O_RDONLY | O_NONBLOCK);
     if (fd_device_fifo == -1)
         ErrExit("<device> open fifo failed");
 
-    if (close(fd_device_fifo) == -1) {
-        ErrExit("<device> close fifo failed");
-    }
+    position_fd = open(path_to_position_file, O_RDONLY);
+    if (position_fd == -1)
+        ErrExit("<device> open position file failed");
+
+    Position next_position;
+    char next_line[ROW_BUFFER_SIZE];
+
     while(1) {
-        
+        readNextLine(next_line);
+        getNextPosition(next_line, &next_position);
     }
 }
