@@ -1,5 +1,8 @@
 #pragma once
 
+#define MSG_BUFFER_SIZE 10
+#define ROW_BUFFER_SIZE 50
+
 typedef struct {
     int row;
     int col;

@@ -12,14 +12,18 @@
 #include "semaphore.h"
 #include "shared_memory.h"
 
-#define ROW_BUFFER_SIZE 50
-
 int id_device; 
 
 const char *base_path_to_device_fifo = "/tmp/dev_fifo.";
 char path_to_device_fifo[25];
 int fd_device_fifo;
 int position_fd;
+
+pid_t *board_shm_ptr;
+
+Position next_position = {0,0};
+// buffer di ricezione dei messaggi
+Message *messages_buffer[MSG_BUFFER_SIZE] = {NULL};
 
 void freeDeviceResources() 
 {
@@ -110,7 +114,6 @@ void getNextPosition(char *next_line, Position *next_position)
         buffer[index] = *next_line;
     
     next_position->col = atoi(buffer);
-    // printf("<device pid: %d, id: %d> (%d,%d)\n", getpid(), id_device, next_position->row, next_position->col);
 }
 
 void waitTurnAndBoard(int semid) 
@@ -134,28 +137,78 @@ void signalEndTurn(int semid)
     }
 }
 
-void readMessages() {
+pid_t searchAvailableDevice(Message *msg) 
+{
+    pid_t result = 0;
+    for (int row = (next_position.row - msg->max_distance); row < (next_position.row + msg->max_distance) && row < BOARD_ROWS && result == 0; row++) {
+        for (int col = (next_position.col - msg->max_distance); col < (next_position.col + msg->max_distance) && col < BOARD_COLS && result == 0; col++) {
+            int offset = row*BOARD_COLS+col;
+            if (board_shm_ptr[offset] != 0)
+                result = board_shm_ptr[offset];
+        }
+    }
+    return result;
+}
+
+void sendMessages()
+{
+    pid_t next_device;
+    char path_to_receiver_device_fifo[25];
+    
+    for (int i = 0; i < sizeof(messages_buffer) && messages_buffer[i]; i++) {
+        next_device = searchAvailableDevice(messages_buffer[i]);
+        if (next_device != 0) {
+            sprintf(path_to_receiver_device_fifo, "%s%d", base_path_to_device_fifo, next_device);
+            if( access(path_to_receiver_device_fifo, F_OK ) != -1 ) {
+                int fd_receiver_device_fifo = open(path_to_receiver_device_fifo, O_WRONLY);
+                if (fd_receiver_device_fifo == -1) {
+                    printf("<device %d> open fifo receiver device (pid = %d) failed\n", getpid(), next_device);
+                } else {
+                    int res = write(fd_receiver_device_fifo, messages_buffer[i], sizeof(Message));
+                    if (res == -1 || res != sizeof(Message)) {
+                        printf("<device %d> write to fifo receiver device (pid = %d) failed\n", getpid(), next_device);
+                    } else {
+                        // libera il posto nel buffer di ricezione
+                        messages_buffer[i] = NULL;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void readMessages() 
+{
     int bR = -1;
     Message msg;
+    int i = 0;
 
     do {
         bR = read(fd_device_fifo, &msg, sizeof(Message));
         if (bR == -1) {
             ErrExit("<device> read fifo failed");
         } else if (bR == sizeof(Message)) {
+            for (; i < sizeof(messages_buffer); i++) {
+                if (!messages_buffer[i]) {
+                    messages_buffer[i] = &msg;
+                    break;
+                }
+            }
             printf("<device %d> Read:\n", getpid());
             printDebugMessage(&msg);
         }
     } while (bR > 0);
+    // TODO: salvare i messaggi nella lista di ack
 }
 
-void execDevice(int _id_device, int semid, int board_shmid, const char *path_to_position_file) {
+void execDevice(int _id_device, int semid, int board_shmid, const char *path_to_position_file) 
+{
     id_device = _id_device;
     // printf("<device pid: %d, id: %d> Created !!!\n", getpid(), _id_device);
 
     changeDeviceSignalHandler();
 
-    pid_t *board_shm_ptr = (pid_t *)getSharedMemory(board_shmid, 0);
+    board_shm_ptr = (pid_t *)getSharedMemory(board_shmid, 0);
 
     sprintf(path_to_device_fifo, "%s%d", base_path_to_device_fifo, getpid());
 
@@ -172,11 +225,11 @@ void execDevice(int _id_device, int semid, int board_shmid, const char *path_to_
     if (position_fd == -1)
         ErrExit("<device> open position file failed");
 
-    Position next_position = {0,0};
     char next_line[ROW_BUFFER_SIZE];
 
     while(1) {
         waitTurnAndBoard(semid);
+        sendMessages();
         readMessages();
 
         int old_position_index = next_position.row * BOARD_COLS + next_position.col;
