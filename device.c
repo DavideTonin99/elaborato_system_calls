@@ -134,6 +134,21 @@ void signalEndTurn(int semid)
     }
 }
 
+void readMessages() {
+    int bR = -1;
+    Message msg;
+
+    do {
+        bR = read(fd_device_fifo, &msg, sizeof(Message));
+        if (bR == -1) {
+            ErrExit("<device> read fifo failed");
+        } else if (bR == sizeof(Message)) {
+            printf("<device %d> Read:\n", getpid());
+            printDebugMessage(&msg);
+        }
+    } while (bR > 0);
+}
+
 void execDevice(int _id_device, int semid, int board_shmid, const char *path_to_position_file) {
     id_device = _id_device;
     // printf("<device pid: %d, id: %d> Created !!!\n", getpid(), _id_device);
@@ -162,6 +177,7 @@ void execDevice(int _id_device, int semid, int board_shmid, const char *path_to_
 
     while(1) {
         waitTurnAndBoard(semid);
+        readMessages();
 
         int old_position_index = next_position.row * BOARD_COLS + next_position.col;
 
