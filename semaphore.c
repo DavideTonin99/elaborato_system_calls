@@ -33,7 +33,9 @@ int initSemaphoreSet(int length, int devices)
     // L'ultimo semaforo gestisce la lista di acknowledgments
     unsigned short sem_init_values[length];
     int i = 0;
-    for (i = 0; i < devices; i++)
+    sem_init_values[i] = 1;
+
+    for (i = 1; i < devices; i++)
         sem_init_values[i] = 0;
     sem_init_values[i] = 1;
     sem_init_values[i+1] = 1;

@@ -17,9 +17,11 @@
 #include "device.h"
 
 int semid = -1;
+
 // id shared memory
 int board_shmid;
 int acklist_shmid;
+
 // ptr shared memory
 pid_t *board_shm_ptr;
 int *acklist_shm_ptr;
@@ -70,33 +72,16 @@ void changeSignalHandler()
         ErrExit("<server> change signal handler failed");
 }
 
-void printBoard(int i) 
-{
-    printf("Iteration: %d\n", i);
-    char divider[8 * (BOARD_COLS+1)];
-    memset(divider, '-', sizeof(divider));
-    printf("%s\n", divider);
-
-    for (int row = 0; row < BOARD_ROWS; row++) {
-        for (int col = 0; col < BOARD_COLS; col++) {
-            int offset = row * BOARD_COLS + col;
-            printf("%8d", board_shm_ptr[offset]);
-        }
-        printf("\n");
-    }
-    printf("%s\n", divider);
-}
-
-void initDevices(int devices, const char *path_to_position_file)
+void initDevices(int n_devices, const char *path_to_position_file)
 {
     pid_t pid;
-    for (int i = 0; i < devices; i++) {
+    for (int i = 0; i < n_devices; i++) {
         pid = fork();
         if (pid == -1) {
             printf("child %d not created!", i);
             exit(0);
         } else if (pid == 0) {
-            execDevice(i, semid, board_shm_ptr, path_to_position_file);
+            execDevice(i, semid, board_shmid, path_to_position_file);
         }
     }
 
@@ -141,14 +126,14 @@ int main(int argc, char *argv[])
     board_shm_ptr = (pid_t *)getSharedMemory(board_shmid, 0);
 
     initDevices(N_DEVICES, argv[2]);
-
+    
     int i = 0;
     while (1) {
+        printf("# Step %d: device positions ########################\n", i);
+        // sblocca la board
         semOp(semid, N_DEVICES, -1);
         sleep(2);
-        printBoard(i);
         i++;
-        kill(getpid(), SIGTERM);
     }
 
     return 0;

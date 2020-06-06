@@ -9,6 +9,8 @@
 #include "defines.h"
 #include "err_exit.h"
 #include "device.h"
+#include "semaphore.h"
+#include "shared_memory.h"
 
 #define ROW_BUFFER_SIZE 50
 
@@ -41,7 +43,7 @@ void deviceSigHandler(int sig)
 
 void changeDeviceSignalHandler() 
 {
-    printf("<device pid: %d, id: %d> Changing signal handler...\n", getpid(), id_device);
+    // printf("<device pid: %d, id: %d> Changing signal handler...\n", getpid(), id_device);
     sigset_t signals_set;
     if (sigfillset(&signals_set) == -1)
         ErrExit("<device> sigfillset failed");
@@ -111,15 +113,38 @@ void getNextPosition(char *next_line, Position *next_position)
     // printf("<device pid: %d, id: %d> (%d,%d)\n", getpid(), id_device, next_position->row, next_position->col);
 }
 
-void execDevice(int _id_device, int semid, pid_t *board_shm_ptr, const char *path_to_position_file) {
+void waitTurnAndBoard(int semid) 
+{
+    // il device aspetta il proprio turno
+    semOp(semid, (unsigned short)id_device, -1);
+    // il device aspetta che la board sia accessibile
+    semOp(semid, (unsigned short)N_DEVICES, 0);
+}
+
+void signalEndTurn(int semid)
+{
+    if (id_device < N_DEVICES - 1) {
+        // se il device corrente non è l'ultimo, sblocca il prossimo
+        semOp(semid, (unsigned short)(id_device + 1), 1);
+    } else {
+        // blocca la board
+        semOp(semid, (unsigned short)N_DEVICES, 1);
+        // sblocca il primo device
+        semOp(semid, 0, 1);
+    }
+}
+
+void execDevice(int _id_device, int semid, int board_shmid, const char *path_to_position_file) {
     id_device = _id_device;
-    printf("<device pid: %d, id: %d> Created !!!\n", getpid(), _id_device);
+    // printf("<device pid: %d, id: %d> Created !!!\n", getpid(), _id_device);
 
     changeDeviceSignalHandler();
 
+    pid_t *board_shm_ptr = (pid_t *)getSharedMemory(board_shmid, 0);
+
     sprintf(path_to_device_fifo, "%s%d", base_path_to_device_fifo, getpid());
 
-    printf("<device pid: %d, id: %d> Creating fifo...\n", getpid(), id_device);
+    // printf("<device pid: %d, id: %d> Creating fifo...\n", getpid(), id_device);
     int res_device_fifo = mkfifo(path_to_device_fifo, S_IRUSR | S_IWUSR);
     if (res_device_fifo == -1)
         ErrExit("<device> mkfifo failed");
@@ -132,11 +157,34 @@ void execDevice(int _id_device, int semid, pid_t *board_shm_ptr, const char *pat
     if (position_fd == -1)
         ErrExit("<device> open position file failed");
 
-    Position next_position;
+    Position next_position = {0,0};
     char next_line[ROW_BUFFER_SIZE];
 
     while(1) {
+        waitTurnAndBoard(semid);
+
+        int old_position_index = next_position.row * BOARD_COLS + next_position.col;
+
         readNextLine(next_line);
         getNextPosition(next_line, &next_position);
+
+        int next_position_index = next_position.row * BOARD_COLS + next_position.col;
+
+        // se la nuova posizione non è occupata, sposta il device
+        if (board_shm_ptr[next_position_index] == 0) {
+            // prima libera la precedente zona occupata
+            board_shm_ptr[old_position_index] = 0;
+            // occupa la nuova zona
+            board_shm_ptr[next_position_index] = getpid();
+        } else {
+            // altrimenti il device resta fermo, e ripristina la posizione
+            next_position.row = old_position_index / BOARD_COLS;
+            next_position.col = old_position_index % BOARD_COLS;
+        }
+        printf("%d %d %d msgs: \n", getpid(), next_position.row, next_position.col);
+        if (id_device == N_DEVICES - 1)
+            printf("####################################################\n");
+
+        signalEndTurn(semid);
     }
 }
