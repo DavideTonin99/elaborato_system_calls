@@ -142,10 +142,23 @@ void signalEndTurn(int semid)
     }
 }
 
+int checkAckAvailable() 
+{
+    int result = 0;
+
+    for (int i = 0; i < SIZE_ACK_LIST && result == 0; i++) {
+        if (shm_ptr_acklist[i].message_id == 0) {
+            result = 1;
+        }
+    }
+
+    return result;
+}
+
 void addAck(Message *msg) 
 {
     Acknowledgment *ack = NULL;
-    for (int i = 0; sizeof(shm_ptr_acklist) && ack == NULL; i++) {
+    for (int i = 0; SIZE_ACK_LIST && ack == NULL; i++) {
         if (shm_ptr_acklist[i].message_id == 0) {
             ack = &shm_ptr_acklist[i];
             ack->pid_sender = msg->pid_sender;
@@ -160,7 +173,7 @@ void addAck(Message *msg)
 int ackListContains(pid_t pid_receiver, int message_id) 
 {
     int result = 0;
-    for (int i = 0; i < sizeof(shm_ptr_acklist) && !result; i++) {
+    for (int i = 0; i < SIZE_ACK_LIST && !result; i++) {
         if (shm_ptr_acklist[i].message_id == message_id && shm_ptr_acklist[i].pid_receiver == pid_receiver)
             result = 1;
     }
@@ -188,12 +201,13 @@ pid_t searchAvailableDevice(Position *position, int message_id, double max_dista
 
 void sendMessages(Position *position, Message *messages_buffer, int *n_messages, int semid)
 {
-    pid_t pid_next_device;
+    pid_t pid_next_device = 0;
     char path_to_receiver_device_fifo[25];
     
     for (int i = 0; i < *n_messages; i++) {
         semOp(semid, N_DEVICES+1, -1);
-        pid_next_device = searchAvailableDevice(position, messages_buffer[i].message_id, messages_buffer[i].max_distance);
+        if (checkAckAvailable())
+            pid_next_device = searchAvailableDevice(position, messages_buffer[i].message_id, messages_buffer[i].max_distance);
         semOp(semid, N_DEVICES+1, 1);
 
         if (pid_next_device != 0) {
@@ -226,21 +240,26 @@ void sendMessages(Position *position, Message *messages_buffer, int *n_messages,
 
 void readMessages(Message *messages_buffer, int *n_messages, int semid) 
 {
-    int bR = -1;
+    int bR;
     Message msg;
 
     do {
-        bR = read(fd_device_fifo, &msg, sizeof(Message));
-        if (bR == -1) {
-            ErrExit("<device> read fifo failed");
-        } else if (bR == sizeof(Message)) {
-            // printf("<device %d> Read:\n", getpid());
-            // printDebugMessage(&msg);
-            messages_buffer[*n_messages] = msg;
-            (*n_messages)++;
-            semOp(semid, N_DEVICES+1, -1); // blocca la ack list
-            addAck(&msg);
-            semOp(semid, N_DEVICES+1, 1); // sblocca la ack list
+        bR = -1;
+        semOp(semid, N_DEVICES+1, -1); // blocca la ack list
+        int available = checkAckAvailable();
+        semOp(semid, N_DEVICES+1, 1); // sblocca la ack list
+
+        if (available) {
+            bR = read(fd_device_fifo, &msg, sizeof(Message));
+            if (bR == -1) {
+                ErrExit("<device> read fifo failed");
+            } else if (bR == sizeof(Message)) {
+                // printf("<device %d> Read:\n", getpid());
+                // printDebugMessage(&msg);
+                messages_buffer[*n_messages] = msg;
+                (*n_messages)++;
+                addAck(&msg);
+            }
         }
     } while (bR > 0);
 }
@@ -311,7 +330,7 @@ void execDevice(int _id_device, int semid, int shmid_board, int shmid_acklist, c
 
             // DEBUG, spostare in ack manager
             printf("Ack list:\n");
-            for (int i = 0; i < sizeof(shm_ptr_acklist); i++) {
+            for (int i = 0; i < SIZE_ACK_LIST; i++) {
                 if (shm_ptr_acklist[i].message_id != 0) {
                     Acknowledgment ack = shm_ptr_acklist[i];
                     char buff[20];

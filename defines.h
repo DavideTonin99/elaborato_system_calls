@@ -14,7 +14,7 @@
 #define BOARD_COLS 5
 
 // --grandezza lista acknowledgemnt
-#define SIZE_ACK_LIST 10
+#define SIZE_ACK_LIST 100
 
 typedef struct
 {

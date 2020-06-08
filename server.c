@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
         printf("\n# Step %d: device positions ########################\n", i);
         // sblocca la board
         semOp(semid, N_DEVICES, -1);
-        sleep(1);
+        sleep(2);
         i++;
     }
 
