@@ -3,6 +3,9 @@
 #include "signal.h"
 #include "unistd.h"
 #include "time.h"
+#include "sys/stat.h"
+// INCLUDE MESSAGE QUEUE
+#include "sys/msg.h"
 
 #include "err_exit.h"
 #include "defines.h"
@@ -11,12 +14,20 @@
 #include "semaphore.h"
 
 Acknowledgment *shm_ptr_acklist;
+int msq_id;
+
+void ackManagerFreeResources() 
+{
+    if (msgctl(msq_id, IPC_RMID, NULL) == -1)
+        ErrExit("<ack manager> remove message queue failed");
+    freeSharedMemory(shm_ptr_acklist);
+}
 
 void ackManagerSigHandler(int sig)
 {
     if (sig == SIGTERM || sig == SIGINT) {
         printf("<ack manager pid: %d>remove resources and exit...\n", getpid());
-        freeSharedMemory(shm_ptr_acklist);
+        ackManagerFreeResources();
         exit(0);
     }
 }
@@ -44,10 +55,47 @@ void changeAckManagerSignalHandler()
         ErrExit("<ack manager> change signal handler failed");
 }
 
+void sendResponseToClient(int message_id) 
+{
+    Response response;
+    response.mtype = message_id;
+    int id_ack = 0;
+
+    Acknowledgment ack = {0};
+
+    for (int i = 0; i < SIZE_ACK_LIST; i++) {
+        if (shm_ptr_acklist[i].message_id == message_id) {
+            response.ack[id_ack++] = shm_ptr_acklist[i];
+            shm_ptr_acklist[i] = ack;
+        }
+    }
+
+    size_t size = sizeof(Response) - sizeof(long);
+    if (msgsnd(msq_id, &response, size, 0) == -1)
+        ErrExit("<ack manager> msgsnd send response to client failed");
+}
+
+
+void ackManagerRoutine() 
+{
+    for (int i = 0; i < SIZE_ACK_LIST; i++) {
+        if (shm_ptr_acklist[i].message_id != 0) {
+            if (contAckByMessageId(shm_ptr_acklist, shm_ptr_acklist[i].message_id) == N_DEVICES) {
+                sendResponseToClient(shm_ptr_acklist[i].message_id);
+            }
+        }
+    }
+}
+
 void execAckManager(int shmid_acklist, int msg_queue_key, int semid) 
 {
     changeAckManagerSignalHandler();
     shm_ptr_acklist = (Acknowledgment *)getSharedMemory(shmid_acklist, 0);
+
+    msq_id = msgget(msg_queue_key, IPC_CREAT | S_IWUSR | S_IRUSR);
+    if (msq_id == -1)
+        ErrExit("<ack manager> get message queue failed");
+
     while(1) {
         sleep(5);
         semOp(semid, SEMNUM_ACKLIST, -1);
@@ -63,6 +111,7 @@ void execAckManager(int shmid_acklist, int msg_queue_key, int semid)
                 printf("<ack %d> %d %d %d %s\n", i, ack.pid_sender, ack.pid_receiver, ack.message_id, buff);
             }
         }
-        semOp(semid, N_DEVICES+1, 1);
+        semOp(semid, SEMNUM_ACKLIST, 1);
+        ackManagerRoutine();
     }
 }
