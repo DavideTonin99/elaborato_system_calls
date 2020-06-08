@@ -256,9 +256,13 @@ void readMessages(Message *messages_buffer, int *n_messages, int semid)
             } else if (bR == sizeof(Message)) {
                 // printf("<device %d> Read:\n", getpid());
                 // printDebugMessage(&msg);
-                messages_buffer[*n_messages] = msg;
-                (*n_messages)++;
+                semOp(semid, (unsigned short)SEMNUM_ACKLIST, -1); // blocca la ack list
                 addAck(&msg);
+                if (contAckByMessageId(shm_ptr_acklist, msg.message_id) < N_DEVICES) {
+                    messages_buffer[*n_messages] = msg;
+                    (*n_messages)++;
+                }
+                semOp(semid, (unsigned short)SEMNUM_ACKLIST, 1); // sblocca la ack list
             }
         }
     } while (bR > 0);

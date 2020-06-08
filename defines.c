@@ -46,3 +46,13 @@ void writeOutAck(Message *msg, Response *response)
 //             ErrExit("close file out failed");
 //     }
 }
+
+int contAckByMessageId(Acknowledgment *shm_ptr_acklist, int message_id) 
+{
+    int result = 0;
+    for (int i = 0; i < SIZE_ACK_LIST; i++) {
+        if (shm_ptr_acklist[i].message_id == message_id)
+            result++;
+    }
+    return result;
+}
