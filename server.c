@@ -15,12 +15,16 @@
 #include "semaphore.h"
 #include "fifo.h"
 #include "device.h"
+#include "ack_manager.h"
 
 int semid = -1;
 
 // id shared memory
 int shmid_board;
 int shmid_acklist;
+
+// message queue key
+int msg_queue_key;
 
 void freeResources()
 {        
@@ -82,16 +86,14 @@ void initDevices(int n_devices, const char *path_to_position_file)
     }
 
     // genera l'ack_manager
-    // if (pid != 0) {
-    //     pid = fork();
-    //     if (pid == -1) {
-    //         ErrExit("ack_manager not created!");
-    //     } else if (pid == 0) {
-    //         while (1) {
-
-    //         }
-    //     }
-    // }
+    if (pid != 0) {
+        pid = fork();
+        if (pid == -1) {
+            ErrExit("ack_manager not created!");
+        } else if (pid == 0) {
+            execAckManager(shmid_acklist, msg_queue_key, semid);
+        }
+    }
 }
 
 int main(int argc, char *argv[])
@@ -102,7 +104,7 @@ int main(int argc, char *argv[])
     }
 
     // Legge e controlla la chiave della message queue
-    int msg_queue_key = atoi(argv[1]);
+    msg_queue_key = atoi(argv[1]);
     if (msg_queue_key <= 0) {
         printf("The message queue key must be greater than zero!\n");
         exit(1);
