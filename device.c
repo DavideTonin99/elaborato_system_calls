@@ -5,6 +5,7 @@
 #include "fcntl.h"
 #include "sys/stat.h"
 #include "string.h"
+#include "time.h"
 
 #include "defines.h"
 #include "err_exit.h"
@@ -141,40 +142,72 @@ void signalEndTurn(int semid)
     }
 }
 
-pid_t searchAvailableDevice(Position *position, Message *msg) 
+void addAck(Message *msg) 
+{
+    Acknowledgment *ack = NULL;
+    for (int i = 0; sizeof(shm_ptr_acklist) && ack == NULL; i++) {
+        if (shm_ptr_acklist[i].message_id == 0) {
+            ack = &shm_ptr_acklist[i];
+            ack->pid_sender = msg->pid_sender;
+            ack->pid_receiver = msg->pid_receiver;
+            ack->message_id = msg->message_id;
+            ack->timestamp = time(NULL);
+            break;
+        }
+    }
+}
+
+int ackListContains(pid_t pid_receiver, int message_id) 
+{
+    int result = 0;
+    for (int i = 0; i < sizeof(shm_ptr_acklist) && !result; i++) {
+        if (shm_ptr_acklist[i].message_id == message_id && shm_ptr_acklist[i].pid_receiver == pid_receiver)
+            result = 1;
+    }
+    return result;
+}
+
+pid_t searchAvailableDevice(Position *position, int message_id, double max_distance) 
 {
     pid_t result = 0;
-    int row = (position->row - msg->max_distance) > 0 ? (position->row - msg->max_distance) : 0;
-    int col = (position->col - msg->max_distance) > 0 ? (position->col - msg->max_distance) : 0;
+    int row_min = (position->row - max_distance) > 0 ? (position->row - max_distance) : 0;
+    int col_min = (position->col - max_distance) > 0 ? (position->col - max_distance) : 0;
 
-    int row_max = (position->row + msg->max_distance + 1) < BOARD_ROWS ? (position->col + msg->max_distance + 1) : BOARD_ROWS;
-    int col_max = (position->col + msg->max_distance + 1) < BOARD_COLS ? (position->col + msg->max_distance + 1) : BOARD_COLS;
+    int row_max = (position->row + max_distance + 1) < BOARD_ROWS ? (position->col + max_distance + 1) : BOARD_ROWS;
+    int col_max = (position->col + max_distance + 1) < BOARD_COLS ? (position->col + max_distance + 1) : BOARD_COLS;
 
-    for (; row < row_max && result == 0; row++) {
-        for (; col < col_max && result == 0; col++) {
+    for (int row = row_min; row < row_max && result == 0; row++) {
+        for (int col = col_min; col < col_max && result == 0; col++) {
             int offset = row*BOARD_COLS+col;
-            if (shm_ptr_board[offset] != 0 && shm_ptr_board[offset] != getpid())
+            if (shm_ptr_board[offset] > 0 && shm_ptr_board[offset] != getpid() && !ackListContains(shm_ptr_board[offset], message_id))
                 result = shm_ptr_board[offset];
         }
     }
     return result;
 }
 
-void sendMessages(Position *position, Message *messages_buffer, int *n_messages)
+void sendMessages(Position *position, Message *messages_buffer, int *n_messages, int semid)
 {
     pid_t pid_next_device;
     char path_to_receiver_device_fifo[25];
     
     for (int i = 0; i < *n_messages; i++) {
-        pid_next_device = searchAvailableDevice(position, &messages_buffer[i]);
+        semOp(semid, N_DEVICES+1, -1);
+        pid_next_device = searchAvailableDevice(position, messages_buffer[i].message_id, messages_buffer[i].max_distance);
+        semOp(semid, N_DEVICES+1, 1);
+
         if (pid_next_device != 0) {
             sprintf(path_to_receiver_device_fifo, "%s%d", base_path_to_device_fifo, pid_next_device);
             int fd_receiver_device_fifo = open(path_to_receiver_device_fifo, O_WRONLY);
 
             if (fd_receiver_device_fifo == -1) {
                 printf("<device %d> open fifo receiver device (pid = %d) failed\n", getpid(), pid_next_device);
-            } else {
-                int res = write(fd_receiver_device_fifo, &messages_buffer[i], sizeof(Message));
+            } else {                       
+                Message msg = messages_buffer[i];
+                msg.pid_sender = getpid();
+                msg.pid_receiver = pid_next_device;
+
+                int res = write(fd_receiver_device_fifo, &msg, sizeof(Message));
                 if (res == -1 || res != sizeof(Message)) {
                     printf("<device %d> write to fifo receiver device (pid = %d) failed\n", getpid(), pid_next_device);
                 } else {
@@ -191,7 +224,7 @@ void sendMessages(Position *position, Message *messages_buffer, int *n_messages)
     }
 }
 
-void readMessages(Message *messages_buffer, int *n_messages) 
+void readMessages(Message *messages_buffer, int *n_messages, int semid) 
 {
     int bR = -1;
     Message msg;
@@ -205,13 +238,11 @@ void readMessages(Message *messages_buffer, int *n_messages)
             // printDebugMessage(&msg);
             messages_buffer[*n_messages] = msg;
             (*n_messages)++;
+            semOp(semid, N_DEVICES+1, -1); // blocca la ack list
+            addAck(&msg);
+            semOp(semid, N_DEVICES+1, 1); // sblocca la ack list
         }
     } while (bR > 0);
-}
-
-void addAck(int semid, Message *msg) 
-{
-
 }
 
 void execDevice(int _id_device, int semid, int shmid_board, int shmid_acklist, const char *path_to_position_file) 
@@ -249,8 +280,8 @@ void execDevice(int _id_device, int semid, int shmid_board, int shmid_acklist, c
 
     while(1) {
         waitTurnAndBoard(semid);
-        sendMessages(&position, messages_buffer, &n_messages);
-        readMessages(messages_buffer, &n_messages);
+        sendMessages(&position, messages_buffer, &n_messages, semid);
+        readMessages(messages_buffer, &n_messages, semid);
 
         int old_position_index = position.row * BOARD_COLS + position.col;
 
@@ -275,9 +306,21 @@ void execDevice(int _id_device, int semid, int shmid_board, int shmid_acklist, c
         for (int i = 0; i < n_messages; i++)
             printf("%d, ", messages_buffer[i].message_id);
         printf("\n");
-        if (id_device == N_DEVICES - 1)
+        if (id_device == N_DEVICES - 1) {
             printf("####################################################\n");
 
+            // DEBUG, spostare in ack manager
+            printf("Ack list:\n");
+            for (int i = 0; i < sizeof(shm_ptr_acklist); i++) {
+                if (shm_ptr_acklist[i].message_id != 0) {
+                    Acknowledgment ack = shm_ptr_acklist[i];
+                    char buff[20];
+                    strftime(buff, sizeof(buff), "%Y-%m-%d %H:%M:%S", localtime(&ack.timestamp));
+
+                    printf("<ack %d> %d %d %d %s\n", i, ack.pid_sender, ack.pid_receiver, ack.message_id, buff);
+                }
+            }
+        }
         signalEndTurn(semid);
     }
 }

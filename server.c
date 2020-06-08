@@ -87,7 +87,9 @@ void initDevices(int n_devices, const char *path_to_position_file)
     //     if (pid == -1) {
     //         ErrExit("ack_manager not created!");
     //     } else if (pid == 0) {
-    //         // ack_manager
+    //         while (1) {
+
+    //         }
     //     }
     // }
 }
@@ -125,10 +127,10 @@ int main(int argc, char *argv[])
     
     int i = 0;
     while (1) {
-        printf("# Step %d: device positions ########################\n", i);
+        printf("\n# Step %d: device positions ########################\n", i);
         // sblocca la board
         semOp(semid, N_DEVICES, -1);
-        sleep(2);
+        sleep(1);
         i++;
     }
 

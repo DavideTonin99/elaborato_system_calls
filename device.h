@@ -8,5 +8,5 @@ typedef struct {
     int col;
 } Position;
 
-void execDevice(int _id_device, int semid, int shmid_board, int shmid_acklist, const char *path_to_position_file);
 void freeDeviceResources();
+void execDevice(int _id_device, int semid, int shmid_board, int shmid_acklist, const char *path_to_position_file);
