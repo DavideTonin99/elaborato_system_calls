@@ -73,7 +73,7 @@ void sendMessage(Message *msg)
     if (device_fifo == -1)
         ErrExit("open device fifo failed");
     
-    printf("Sending the message %d to device %d...", msg->message_id, msg->pid_receiver);
+    printf("Sending the message %d to device %d...\n", msg->message_id, msg->pid_receiver);
     // Invia il messaggio al device
     if (write(device_fifo, msg, sizeof(Message)) != sizeof(Message))
         ErrExit("write message failed");
@@ -149,13 +149,13 @@ int main(int argc, char *argv[])
         ErrExit("msgget failed");
 
     Response response;
-    size_t mSize = (sizeof(Acknowledgment)*N_DEVICES) - sizeof(long);
+    size_t size = sizeof(Response) - sizeof(long);
     // di default, msgrcv è bloccante quindi se non ci sono messaggi si ferma ad aspettare
     // aspetta la risposta del server
-    if (msgrcv(msq_id, &response, mSize, msg.message_id, 0) == -1)
+    if (msgrcv(msq_id, &response, size, msg.message_id, 0) == -1)
         ErrExit("msgrcv failed");
 
-    writeOutAck(&msg, &response);
+    writeOutAck(&msg, response);
 
     if (fd_input)
         if (close(fd_input))

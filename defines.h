@@ -55,6 +55,6 @@ void printDebugMessage(Message *msg);
  * @param msg: messaggio inviato dal client
  * @param response: la risposta con la lista di ack da parte del server
  */
-void writeOutAck(Message *msg, Response *response);
+void writeOutAck(Message *msg, Response response);
 
 int contAckByMessageId(Acknowledgment *shm_ptr_acklist, int message_id);

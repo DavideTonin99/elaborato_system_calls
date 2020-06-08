@@ -5,6 +5,8 @@
 #include "stdio.h"
 #include "fcntl.h"
 #include "unistd.h"
+#include "time.h"
+#include "string.h"
 
 #include "defines.h"
 #include "err_exit.h"
@@ -25,26 +27,36 @@ void printDebugMessage(Message *msg)
     }
 }
 
-void writeOutAck(Message *msg, Response *response)
+void writeOutAck(Message *msg, Response response)
 {
-//     if (response) {
-//         char *path_to_fileout;
-//         sprintf(path_to_fileout, "%s%d", "out_", msg->message_id);
-//         sprintf(path_to_fileout, "%s%s", path_to_fileout, ".txt");
-        
-//         printf("Apertura file out '%s'...", path_to_fileout);
-//         int fd_out = open(path_to_fileout, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR);
-//         if (fd_out == -1)
-//             ErrExit("open file out failed");
+    char path_to_fileout[25];
+    sprintf(path_to_fileout, "%s%d%s", "out_", msg->message_id, ".txt");
+    
+    // printf("Apertura file out '%s'...", path_to_fileout);
+    int fd_out = open(path_to_fileout, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR);
+    if (fd_out == -1)
+        ErrExit("open file out failed");
 
-//         // for (Acknowledgment ack = response->ack; *ack != NULL; ++ack) {
-//         //     // TODO scrittura su file
-//         //     printf("%d\n", ack->timestamp);
-//         // }
+    char header[sizeof(msg->message) + 30];
+    sprintf(header, "%s %d: %s\n", "Messaggio", msg->message_id, msg->message);
+    if (write(fd_out, header, strlen(header)) == -1)
+        ErrExit("write failed");
 
-//         if (close(fd_out) == -1)
-//             ErrExit("close file out failed");
-//     }
+    char buffer[100];
+    for (int i = 0; i < N_DEVICES; i++) {
+        memset(buffer, 0, sizeof(buffer));   
+        // TODO scrittura su file
+        char timestamp[20];
+        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&response.ack[i].timestamp));
+        sprintf(buffer, "%d, %d, %s\n", response.ack[i].pid_sender, response.ack[i].pid_receiver, timestamp);
+
+        printf("%s", buffer);
+        if (write(fd_out, buffer, strlen(buffer)) == -1)
+            ErrExit("write failed");
+    }
+
+    if (close(fd_out) == -1)
+        ErrExit("close file out failed");
 }
 
 int contAckByMessageId(Acknowledgment *shm_ptr_acklist, int message_id) 
