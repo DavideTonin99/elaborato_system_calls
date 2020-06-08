@@ -1,5 +1,14 @@
 /// @file server.c
 /// @brief Contiene l'implementazione del SERVER.
+/*
+Il server alloca i segmenti di memoria condivisa per la scacchiera e per la lista di acknowlwedgment,
+e li rimuove prima di terminare.
+Può essere terminato solo da un segnale SIGTERM.
+Genera i semafori per sincronizzare l'accesso alle aree di memoria condivisa.
+Genera i processi figli device e ack manager.
+Gestisce il tempo per l'esecuzione dei movimenti dei device, ogni 2 secondi attiva il movimento
+del primo device, che genera poi in cascata l'attivazione dei movimenti di tutti i device.
+*/
 
 #include "stdio.h"
 #include "stdlib.h"
@@ -117,10 +126,10 @@ int main(int argc, char *argv[])
     if (file_pos == -1)
         ErrExit("open file posizioni failed");
 
-    printf("<server> Inizializzazione semafori...\n");
+    printf("<server> Initialization semaphores...\n");
     semid = initSemaphoreSet(N_DEVICES+2, N_DEVICES);
 
-    printf("<server> Inizializzazione memoria condivisa...\n");
+    printf("<server> Initialization shared memory...\n");
     // Crea i segmenti di memoria condivisa
     shmid_board = allocSharedMemory(IPC_PRIVATE, sizeof(pid_t) * BOARD_ROWS * BOARD_COLS);
     shmid_acklist = allocSharedMemory(IPC_PRIVATE, sizeof(Acknowledgment) * SIZE_ACK_LIST);

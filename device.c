@@ -24,6 +24,7 @@ int id_device;
 const char *base_path_to_device_fifo = "/tmp/dev_fifo.";
 char path_to_device_fifo[25];
 int fd_device_fifo;
+
 // file descriptor file posizioni device
 int fd_position;
 
