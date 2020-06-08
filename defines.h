@@ -13,6 +13,9 @@
 #define BOARD_ROWS 5
 #define BOARD_COLS 5
 
+// --grandezza lista acknowledgemnt
+#define SIZE_ACK_LIST 100
+
 typedef struct
 {
     pid_t pid_sender;
