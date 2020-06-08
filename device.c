@@ -23,7 +23,8 @@ pid_t *board_shm_ptr;
 
 Position next_position = {0,0};
 // buffer di ricezione dei messaggi
-Message *messages_buffer[MSG_BUFFER_SIZE] = {NULL};
+Message messages_buffer[MSG_BUFFER_SIZE] = {};
+int n_messages = 0;
 
 void freeDeviceResources() 
 {
@@ -140,10 +141,16 @@ void signalEndTurn(int semid)
 pid_t searchAvailableDevice(Message *msg) 
 {
     pid_t result = 0;
-    for (int row = (next_position.row - msg->max_distance); row < (next_position.row + msg->max_distance) && row < BOARD_ROWS && result == 0; row++) {
-        for (int col = (next_position.col - msg->max_distance); col < (next_position.col + msg->max_distance) && col < BOARD_COLS && result == 0; col++) {
+    int row = (next_position.row - msg->max_distance) > 0 ? (next_position.row - msg->max_distance) : 0;
+    int col = (next_position.col - msg->max_distance) > 0 ? (next_position.col - msg->max_distance) : 0;
+
+    int row_max = (next_position.row + msg->max_distance) < BOARD_ROWS ? (next_position.col + msg->max_distance) : BOARD_ROWS;
+    int col_max = (next_position.col + msg->max_distance) < BOARD_COLS ? (next_position.col + msg->max_distance) : BOARD_COLS;
+
+    for (; row < row_max && result == 0; row++) {
+        for (; col < col_max && result == 0; col++) {
             int offset = row*BOARD_COLS+col;
-            if (board_shm_ptr[offset] != 0)
+            if (board_shm_ptr[offset] != 0 && board_shm_ptr[offset] != getpid())
                 result = board_shm_ptr[offset];
         }
     }
@@ -155,8 +162,8 @@ void sendMessages()
     pid_t next_device;
     char path_to_receiver_device_fifo[25];
     
-    for (int i = 0; i < sizeof(messages_buffer) && messages_buffer[i]; i++) {
-        next_device = searchAvailableDevice(messages_buffer[i]);
+    for (int i = 0; i < n_messages; i++) {
+        next_device = searchAvailableDevice(&messages_buffer[i]);
         if (next_device != 0) {
             sprintf(path_to_receiver_device_fifo, "%s%d", base_path_to_device_fifo, next_device);
             if( access(path_to_receiver_device_fifo, F_OK ) != -1 ) {
@@ -164,14 +171,18 @@ void sendMessages()
                 if (fd_receiver_device_fifo == -1) {
                     printf("<device %d> open fifo receiver device (pid = %d) failed\n", getpid(), next_device);
                 } else {
-                    int res = write(fd_receiver_device_fifo, messages_buffer[i], sizeof(Message));
+                    int res = write(fd_receiver_device_fifo, &messages_buffer[i], sizeof(Message));
                     if (res == -1 || res != sizeof(Message)) {
                         printf("<device %d> write to fifo receiver device (pid = %d) failed\n", getpid(), next_device);
                     } else {
-                        // libera il posto nel buffer di ricezione
-                        messages_buffer[i] = NULL;
+                        // shift a sinistra
+                        if (i < MSG_BUFFER_SIZE-1)
+                            messages_buffer[i] = messages_buffer[i+1];
+                        n_messages--;
                     }
                 }
+                if (close(fd_receiver_device_fifo) == -1)
+                    ErrExit("<device> close receiver device fifo failed");
             }
         }
     }
@@ -181,21 +192,16 @@ void readMessages()
 {
     int bR = -1;
     Message msg;
-    int i = 0;
 
     do {
         bR = read(fd_device_fifo, &msg, sizeof(Message));
         if (bR == -1) {
             ErrExit("<device> read fifo failed");
         } else if (bR == sizeof(Message)) {
-            for (; i < sizeof(messages_buffer); i++) {
-                if (!messages_buffer[i]) {
-                    messages_buffer[i] = &msg;
-                    break;
-                }
-            }
-            printf("<device %d> Read:\n", getpid());
-            printDebugMessage(&msg);
+            // printf("<device %d> Read:\n", getpid());
+            // printDebugMessage(&msg);
+            messages_buffer[n_messages] = msg;
+            n_messages++;
         }
     } while (bR > 0);
     // TODO: salvare i messaggi nella lista di ack
@@ -213,7 +219,7 @@ void execDevice(int _id_device, int semid, int board_shmid, const char *path_to_
     sprintf(path_to_device_fifo, "%s%d", base_path_to_device_fifo, getpid());
 
     // printf("<device pid: %d, id: %d> Creating fifo...\n", getpid(), id_device);
-    int res_device_fifo = mkfifo(path_to_device_fifo, S_IRUSR | S_IWUSR);
+    int res_device_fifo = mkfifo(path_to_device_fifo, S_IRUSR | S_IWUSR | S_IWGRP);
     if (res_device_fifo == -1)
         ErrExit("<device> mkfifo failed");
 
@@ -250,7 +256,11 @@ void execDevice(int _id_device, int semid, int board_shmid, const char *path_to_
             next_position.row = old_position_index / BOARD_COLS;
             next_position.col = old_position_index % BOARD_COLS;
         }
-        printf("%d %d %d msgs: \n", getpid(), next_position.row, next_position.col);
+        printf("%d %d %d msgs: ", getpid(), next_position.row, next_position.col);
+        // stampa lista messages
+        for (int i = 0; i < n_messages; i++)
+            printf("%d, ", messages_buffer[i].message_id);
+        printf("\n");
         if (id_device == N_DEVICES - 1)
             printf("####################################################\n");
 
