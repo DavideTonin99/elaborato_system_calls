@@ -16,6 +16,10 @@
 // --grandezza lista acknowledgemnt
 #define SIZE_ACK_LIST 100
 
+// --semafori
+#define SEMNUM_BOARD N_DEVICES
+#define SEMNUM_ACKLIST N_DEVICES+1
+
 typedef struct
 {
     pid_t pid_sender;

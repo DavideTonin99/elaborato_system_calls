@@ -126,7 +126,7 @@ void waitTurnAndBoard(int semid)
     // il device aspetta il proprio turno
     semOp(semid, (unsigned short)id_device, -1);
     // il device aspetta che la board sia accessibile
-    semOp(semid, (unsigned short)N_DEVICES, 0);
+    semOp(semid, (unsigned short)SEMNUM_BOARD, 0);
 }
 
 void signalEndTurn(int semid)
@@ -136,7 +136,7 @@ void signalEndTurn(int semid)
         semOp(semid, (unsigned short)(id_device + 1), 1);
     } else {
         // blocca la board
-        semOp(semid, (unsigned short)N_DEVICES, 1);
+        semOp(semid, (unsigned short)SEMNUM_BOARD, 1);
         // sblocca il primo device
         semOp(semid, 0, 1);
     }
@@ -205,10 +205,10 @@ void sendMessages(Position *position, Message *messages_buffer, int *n_messages,
     char path_to_receiver_device_fifo[25];
     
     for (int i = 0; i < *n_messages; i++) {
-        semOp(semid, N_DEVICES+1, -1);
+        semOp(semid, (unsigned short)SEMNUM_ACKLIST, -1);
         if (checkAckAvailable())
             pid_next_device = searchAvailableDevice(position, messages_buffer[i].message_id, messages_buffer[i].max_distance);
-        semOp(semid, N_DEVICES+1, 1);
+        semOp(semid, (unsigned short)SEMNUM_ACKLIST, 1);
 
         if (pid_next_device != 0) {
             sprintf(path_to_receiver_device_fifo, "%s%d", base_path_to_device_fifo, pid_next_device);
@@ -245,9 +245,9 @@ void readMessages(Message *messages_buffer, int *n_messages, int semid)
 
     do {
         bR = -1;
-        semOp(semid, N_DEVICES+1, -1); // blocca la ack list
+        semOp(semid, (unsigned short)SEMNUM_ACKLIST, -1); // blocca la ack list
         int available = checkAckAvailable();
-        semOp(semid, N_DEVICES+1, 1); // sblocca la ack list
+        semOp(semid, (unsigned short)SEMNUM_ACKLIST, 1); // sblocca la ack list
 
         if (available) {
             bR = read(fd_device_fifo, &msg, sizeof(Message));
@@ -327,18 +327,6 @@ void execDevice(int _id_device, int semid, int shmid_board, int shmid_acklist, c
         printf("\n");
         if (id_device == N_DEVICES - 1) {
             printf("####################################################\n");
-
-            // DEBUG, spostare in ack manager
-            printf("Ack list:\n");
-            for (int i = 0; i < SIZE_ACK_LIST; i++) {
-                if (shm_ptr_acklist[i].message_id != 0) {
-                    Acknowledgment ack = shm_ptr_acklist[i];
-                    char buff[20];
-                    strftime(buff, sizeof(buff), "%Y-%m-%d %H:%M:%S", localtime(&ack.timestamp));
-
-                    printf("<ack %d> %d %d %d %s\n", i, ack.pid_sender, ack.pid_receiver, ack.message_id, buff);
-                }
-            }
         }
         signalEndTurn(semid);
     }
