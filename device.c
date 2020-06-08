@@ -13,8 +13,8 @@
 #include "shared_memory.h"
 
 // memoria condivisa
-pid_t *board_shm_ptr;
-Acknowledgment *acklist_shm_ptr;
+pid_t *shm_ptr_board;
+Acknowledgment *shm_ptr_acklist;
 
 // device
 int id_device; 
@@ -24,18 +24,18 @@ const char *base_path_to_device_fifo = "/tmp/dev_fifo.";
 char path_to_device_fifo[25];
 int fd_device_fifo;
 // file descriptor file posizioni device
-int position_fd;
+int fd_position;
 
 void freeDeviceResources() 
 {
-    freeSharedMemory(board_shm_ptr);
-    freeSharedMemory(acklist_shm_ptr);
+    freeSharedMemory(shm_ptr_board);
+    freeSharedMemory(shm_ptr_acklist);
 
     if (close(fd_device_fifo) == -1)
         ErrExit("<device> close device fifo failed");
     if(unlink(path_to_device_fifo) == -1)
         ErrExit("<device> unlink fifo failed");
-    if(close(position_fd) == -1)
+    if(close(fd_position) == -1)
         ErrExit("<device> close position file failed");
 
 }
@@ -80,12 +80,12 @@ void readNextLine(char *next_line)
     // contiene byte successivo
     char buffer[2] = {0};
 
-    while(read(position_fd, buffer, 1) != 0 && strcmp(buffer, "\n") != 0)
+    while(read(fd_position, buffer, 1) != 0 && strcmp(buffer, "\n") != 0)
         strcat(row, buffer);
 
-    // se è finito il file, ricomincia da capo    
+    // DEBUG: se è finito il file, ricomincia da capo
     if(strlen(row) == 0){
-        lseek(position_fd, 0, SEEK_SET); 
+        lseek(fd_position, 0, SEEK_SET); 
         readNextLine(next_line);
     } else {
         memcpy(next_line, row, strlen(row)+1);
@@ -153,8 +153,8 @@ pid_t searchAvailableDevice(Position *position, Message *msg)
     for (; row < row_max && result == 0; row++) {
         for (; col < col_max && result == 0; col++) {
             int offset = row*BOARD_COLS+col;
-            if (board_shm_ptr[offset] != 0 && board_shm_ptr[offset] != getpid())
-                result = board_shm_ptr[offset];
+            if (shm_ptr_board[offset] != 0 && shm_ptr_board[offset] != getpid())
+                result = shm_ptr_board[offset];
         }
     }
     return result;
@@ -162,21 +162,21 @@ pid_t searchAvailableDevice(Position *position, Message *msg)
 
 void sendMessages(Position *position, Message *messages_buffer, int *n_messages)
 {
-    pid_t next_device_pid;
+    pid_t pid_next_device;
     char path_to_receiver_device_fifo[25];
     
     for (int i = 0; i < *n_messages; i++) {
-        next_device_pid = searchAvailableDevice(position, &messages_buffer[i]);
-        if (next_device_pid != 0) {
-            sprintf(path_to_receiver_device_fifo, "%s%d", base_path_to_device_fifo, next_device_pid);
+        pid_next_device = searchAvailableDevice(position, &messages_buffer[i]);
+        if (pid_next_device != 0) {
+            sprintf(path_to_receiver_device_fifo, "%s%d", base_path_to_device_fifo, pid_next_device);
             int fd_receiver_device_fifo = open(path_to_receiver_device_fifo, O_WRONLY);
 
             if (fd_receiver_device_fifo == -1) {
-                printf("<device %d> open fifo receiver device (pid = %d) failed\n", getpid(), next_device_pid);
+                printf("<device %d> open fifo receiver device (pid = %d) failed\n", getpid(), pid_next_device);
             } else {
                 int res = write(fd_receiver_device_fifo, &messages_buffer[i], sizeof(Message));
                 if (res == -1 || res != sizeof(Message)) {
-                    printf("<device %d> write to fifo receiver device (pid = %d) failed\n", getpid(), next_device_pid);
+                    printf("<device %d> write to fifo receiver device (pid = %d) failed\n", getpid(), pid_next_device);
                 } else {
                     // shift a sinistra per cancellare il messaggio appena inviato
                     if (i < MSG_BUFFER_SIZE-1)
@@ -214,15 +214,15 @@ void addAck(int semid, Message *msg)
 
 }
 
-void execDevice(int _id_device, int semid, int board_shmid, int acklist_shmid, const char *path_to_position_file) 
+void execDevice(int _id_device, int semid, int shmid_board, int shmid_acklist, const char *path_to_position_file) 
 {
     id_device = _id_device;
     // printf("<device pid: %d, id: %d> Created !!!\n", getpid(), _id_device);
 
     changeDeviceSignalHandler();
 
-    board_shm_ptr = (pid_t *)getSharedMemory(board_shmid, 0);
-    acklist_shm_ptr = (Acknowledgment *)getSharedMemory(board_shmid, 0);
+    shm_ptr_board = (pid_t *)getSharedMemory(shmid_board, 0);
+    shm_ptr_acklist = (Acknowledgment *)getSharedMemory(shmid_acklist, 0);
 
     sprintf(path_to_device_fifo, "%s%d", base_path_to_device_fifo, getpid());
 
@@ -235,8 +235,8 @@ void execDevice(int _id_device, int semid, int board_shmid, int acklist_shmid, c
     if (fd_device_fifo == -1)
         ErrExit("<device> open fifo failed");
 
-    position_fd = open(path_to_position_file, O_RDONLY);
-    if (position_fd == -1)
+    fd_position = open(path_to_position_file, O_RDONLY);
+    if (fd_position == -1)
         ErrExit("<device> open position file failed");
 
     // posizione device
@@ -260,11 +260,11 @@ void execDevice(int _id_device, int semid, int board_shmid, int acklist_shmid, c
         int next_position_index = position.row * BOARD_COLS + position.col;
 
         // se la nuova posizione non è occupata, sposta il device
-        if (board_shm_ptr[next_position_index] == 0) {
+        if (shm_ptr_board[next_position_index] == 0) {
             // prima libera la precedente zona occupata
-            board_shm_ptr[old_position_index] = 0;
+            shm_ptr_board[old_position_index] = 0;
             // occupa la nuova zona
-            board_shm_ptr[next_position_index] = getpid();
+            shm_ptr_board[next_position_index] = getpid();
         } else {
             // altrimenti il device resta fermo, e ripristina la posizione
             position.row = old_position_index / BOARD_COLS;

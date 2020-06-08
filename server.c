@@ -19,16 +19,16 @@
 int semid = -1;
 
 // id shared memory
-int board_shmid;
-int acklist_shmid;
+int shmid_board;
+int shmid_acklist;
 
 void freeResources()
 {        
     printf("<server> Free resources...\n");
     // chiusura di tutti i meccanismi di comunicazione/sincronizzazione tra processi
     removeSemaphoreSet(semid);
-    removeSharedMemory(board_shmid);
-    removeSharedMemory(acklist_shmid);
+    removeSharedMemory(shmid_board);
+    removeSharedMemory(shmid_acklist);
 }
 
 void sigHandler(int sig)
@@ -77,7 +77,7 @@ void initDevices(int n_devices, const char *path_to_position_file)
             printf("child %d not created!", i);
             exit(0);
         } else if (pid == 0) {
-            execDevice(i, semid, board_shmid, acklist_shmid, path_to_position_file);
+            execDevice(i, semid, shmid_board, shmid_acklist, path_to_position_file);
         }
     }
 
@@ -118,8 +118,8 @@ int main(int argc, char *argv[])
 
     printf("<server> Inizializzazione memoria condivisa...\n");
     // Crea i segmenti di memoria condivisa
-    board_shmid = allocSharedMemory(IPC_PRIVATE, sizeof(pid_t) * BOARD_ROWS * BOARD_COLS);
-    acklist_shmid = allocSharedMemory(IPC_PRIVATE, sizeof(Acknowledgment) * SIZE_ACK_LIST);
+    shmid_board = allocSharedMemory(IPC_PRIVATE, sizeof(pid_t) * BOARD_ROWS * BOARD_COLS);
+    shmid_acklist = allocSharedMemory(IPC_PRIVATE, sizeof(Acknowledgment) * SIZE_ACK_LIST);
 
     initDevices(N_DEVICES, argv[2]);
     
