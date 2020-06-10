@@ -8,8 +8,8 @@
 #include "time.h"
 #include "string.h"
 
-#include "defines.h"
-#include "err_exit.h"
+#include "inc/defines.h"
+#include "inc/err_exit.h"
 
 void printDebugMessage(Message *msg) 
 {

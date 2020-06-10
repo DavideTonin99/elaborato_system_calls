@@ -2,8 +2,9 @@
 /// @brief Contiene l'implementazione delle funzioni
 ///         specifiche per la gestione della MEMORIA CONDIVISA.
 
-#include "err_exit.h"
-#include "shared_memory.h"
+#include "inc/err_exit.h"
+#include "inc/shared_memory.h"
+
 #include "sys/shm.h"
 
 int allocSharedMemory(key_t shm_key, size_t size)

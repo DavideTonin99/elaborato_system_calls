@@ -7,11 +7,11 @@
 // INCLUDE MESSAGE QUEUE
 #include "sys/msg.h"
 
-#include "err_exit.h"
-#include "defines.h"
-#include "ack_manager.h"
-#include "shared_memory.h"
-#include "semaphore.h"
+#include "inc/err_exit.h"
+#include "inc/defines.h"
+#include "inc/ack_manager.h"
+#include "inc/shared_memory.h"
+#include "inc/semaphore.h"
 
 Acknowledgment *shm_ptr_acklist;
 int msq_id;

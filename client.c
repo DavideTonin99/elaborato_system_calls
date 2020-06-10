@@ -30,9 +30,9 @@ Una volta generato il file di output il client termina.
 #include "fcntl.h"
 #include "unistd.h"
 
-#include "err_exit.h"
-#include "defines.h"
-#include "fifo.h"
+#include "inc/err_exit.h"
+#include "inc/defines.h"
+#include "inc/fifo.h"
 
 const char *base_path_to_device_fifo = "/tmp/dev_fifo.";
 

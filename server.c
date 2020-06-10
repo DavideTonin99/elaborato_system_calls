@@ -18,13 +18,13 @@ del primo device, che genera poi in cascata l'attivazione dei movimenti di tutti
 #include "string.h"
 #include "sys/wait.h"
 
-#include "defines.h"
-#include "err_exit.h"
-#include "shared_memory.h"
-#include "semaphore.h"
-#include "fifo.h"
-#include "device.h"
-#include "ack_manager.h"
+#include "inc/defines.h"
+#include "inc/err_exit.h"
+#include "inc/shared_memory.h"
+#include "inc/semaphore.h"
+#include "inc/fifo.h"
+#include "inc/device.h"
+#include "inc/ack_manager.h"
 
 int semid = -1;
 
