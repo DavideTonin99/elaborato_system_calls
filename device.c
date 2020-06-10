@@ -2,9 +2,15 @@
 /// @brief Contiene l'implementazione del DEVICE
 /*
 Un device viene generato dal server.
-
+I device si muovono all'interno di una scacchiera seguendo le posizioni scritte in un file posizioni.
+Mentre i device si muovono, un client può connettersi ad un device per inviargli un messaggio.
+Il device che possiede il messaggio deve individuare altri device nel suo raggio di comunicazione
+(i.e., distanza Euclidea sulle posizioni nella scacchiera minore di max_dist) e passare il messaggio
+ad uno di essi. Ciascun device che riceve il messaggio deve cercare un altro device nel proprio
+raggio di comunicazione che non lo abbia ancora ricevuto e passarglielo. La comunicazione client-device
+e device-device avviene tramite fifo.
+L'ultimo device che riceve il messaggio, lo cancella.
 */
-
 #include "stdio.h"
 #include "stdlib.h"
 #include "signal.h"
@@ -36,6 +42,7 @@ int fd_device_fifo;
 // file descriptor file posizioni device
 int fd_position;
 
+// -- LIBERAZIONE RISORSE, SIGNAL HANDLER PER TERMINAZIONE DEVICE
 void freeDeviceResources() 
 {
     freeSharedMemory(shm_ptr_board);
@@ -82,6 +89,27 @@ void changeDeviceSignalHandler()
         ErrExit("<device> change signal handler failed");
 }
 
+void waitTurnAndBoard(int semid) 
+{
+    // il device aspetta il proprio turno
+    semOp(semid, (unsigned short)id_device, -1);
+    // il device aspetta che la board sia accessibile
+    semOp(semid, (unsigned short)SEMNUM_BOARD, 0);
+}
+
+void signalEndTurn(int semid)
+{
+    if (id_device < N_DEVICES - 1) {
+        // se il device corrente non è l'ultimo, sblocca il prossimo
+        semOp(semid, (unsigned short)(id_device + 1), 1);
+    } else {
+        // blocca la board
+        semOp(semid, (unsigned short)SEMNUM_BOARD, 1);
+        // sblocca il primo device
+        semOp(semid, 0, 1);
+    }
+}
+
 void readNextLine(char *next_line) 
 {
     // contiene la riga successiva
@@ -115,63 +143,34 @@ void getNextPosition(char *next_line, Position *position)
     position->col = atoi(col);
 }
 
-void waitTurnAndBoard(int semid) 
+void readMessages(Message *messages_buffer, int *n_messages, int semid) 
 {
-    // il device aspetta il proprio turno
-    semOp(semid, (unsigned short)id_device, -1);
-    // il device aspetta che la board sia accessibile
-    semOp(semid, (unsigned short)SEMNUM_BOARD, 0);
-}
+    int bR;
+    Message msg;
 
-void signalEndTurn(int semid)
-{
-    if (id_device < N_DEVICES - 1) {
-        // se il device corrente non è l'ultimo, sblocca il prossimo
-        semOp(semid, (unsigned short)(id_device + 1), 1);
-    } else {
-        // blocca la board
-        semOp(semid, (unsigned short)SEMNUM_BOARD, 1);
-        // sblocca il primo device
-        semOp(semid, 0, 1);
-    }
-}
+    do {
+        bR = -1;
+        semOp(semid, (unsigned short)SEMNUM_ACKLIST, -1); // blocca la ack list
+        int available = checkAckAvailable(shm_ptr_acklist);
+        semOp(semid, (unsigned short)SEMNUM_ACKLIST, 1); // sblocca la ack list
 
-int checkAckAvailable() 
-{
-    int result = 0;
-
-    for (int i = 0; i < SIZE_ACK_LIST && result == 0; i++) {
-        if (shm_ptr_acklist[i].message_id == 0) {
-            result = 1;
+        if (available) {
+            bR = read(fd_device_fifo, &msg, sizeof(Message));
+            if (bR == -1) {
+                ErrExit("<device> read fifo failed");
+            } else if (bR == sizeof(Message)) {
+                // printf("<device %d> Read:\n", getpid());
+                // printDebugMessage(&msg);
+                semOp(semid, (unsigned short)SEMNUM_ACKLIST, -1); // blocca la ack list
+                addAck(shm_ptr_acklist, &msg);
+                if (contAckByMessageId(shm_ptr_acklist, msg.message_id) < N_DEVICES) {
+                    messages_buffer[*n_messages] = msg;
+                    (*n_messages)++;
+                }
+                semOp(semid, (unsigned short)SEMNUM_ACKLIST, 1); // sblocca la ack list
+            }
         }
-    }
-
-    return result;
-}
-
-void addAck(Message *msg) 
-{
-    Acknowledgment *ack = NULL;
-    for (int i = 0; SIZE_ACK_LIST && ack == NULL; i++) {
-        if (shm_ptr_acklist[i].message_id == 0) {
-            ack = &shm_ptr_acklist[i];
-            ack->pid_sender = msg->pid_sender;
-            ack->pid_receiver = msg->pid_receiver;
-            ack->message_id = msg->message_id;
-            ack->timestamp = time(NULL);
-            break;
-        }
-    }
-}
-
-int ackListContains(pid_t pid_receiver, int message_id) 
-{
-    int result = 0;
-    for (int i = 0; i < SIZE_ACK_LIST && !result; i++) {
-        if (shm_ptr_acklist[i].message_id == message_id && shm_ptr_acklist[i].pid_receiver == pid_receiver)
-            result = 1;
-    }
-    return result;
+    } while (bR > 0);
 }
 
 pid_t searchAvailableDevice(Position *position, int message_id, double max_distance) 
@@ -186,7 +185,7 @@ pid_t searchAvailableDevice(Position *position, int message_id, double max_dista
     for (int row = row_min; row < row_max && result == 0; row++) {
         for (int col = col_min; col < col_max && result == 0; col++) {
             int offset = row*BOARD_COLS+col;
-            if (shm_ptr_board[offset] > 0 && shm_ptr_board[offset] != getpid() && !ackListContains(shm_ptr_board[offset], message_id))
+            if (shm_ptr_board[offset] > 0 && shm_ptr_board[offset] != getpid() && !ackListContains(shm_ptr_acklist, shm_ptr_board[offset], message_id))
                 result = shm_ptr_board[offset];
         }
     }
@@ -200,7 +199,7 @@ void sendMessages(Position *position, Message *messages_buffer, int *n_messages,
     
     for (int i = 0; i < *n_messages; i++) {
         semOp(semid, (unsigned short)SEMNUM_ACKLIST, -1);
-        if (checkAckAvailable())
+        if (checkAckAvailable(shm_ptr_acklist))
             pid_next_device = searchAvailableDevice(position, messages_buffer[i].message_id, messages_buffer[i].max_distance);
         semOp(semid, (unsigned short)SEMNUM_ACKLIST, 1);
 
@@ -221,36 +220,6 @@ void sendMessages(Position *position, Message *messages_buffer, int *n_messages,
             closeFIFO(fd_receiver_device_fifo);
         }
     }
-}
-
-void readMessages(Message *messages_buffer, int *n_messages, int semid) 
-{
-    int bR;
-    Message msg;
-
-    do {
-        bR = -1;
-        semOp(semid, (unsigned short)SEMNUM_ACKLIST, -1); // blocca la ack list
-        int available = checkAckAvailable();
-        semOp(semid, (unsigned short)SEMNUM_ACKLIST, 1); // sblocca la ack list
-
-        if (available) {
-            bR = read(fd_device_fifo, &msg, sizeof(Message));
-            if (bR == -1) {
-                ErrExit("<device> read fifo failed");
-            } else if (bR == sizeof(Message)) {
-                // printf("<device %d> Read:\n", getpid());
-                // printDebugMessage(&msg);
-                semOp(semid, (unsigned short)SEMNUM_ACKLIST, -1); // blocca la ack list
-                addAck(&msg);
-                if (contAckByMessageId(shm_ptr_acklist, msg.message_id) < N_DEVICES) {
-                    messages_buffer[*n_messages] = msg;
-                    (*n_messages)++;
-                }
-                semOp(semid, (unsigned short)SEMNUM_ACKLIST, 1); // sblocca la ack list
-            }
-        }
-    } while (bR > 0);
 }
 
 void moveDevice(Position *position, char *next_line) 

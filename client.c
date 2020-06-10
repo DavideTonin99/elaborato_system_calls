@@ -15,24 +15,22 @@ Quando il client riceve il messaggio nella coda di messaggi genera un file out_m
 identificano i passaggi fatti dal messaggio con i relativi istanti di tempo.
 Una volta generato il file di output il client termina.
 */
-
-// INCLUDE GENERICI
 #include "stdio.h"
 #include "stdlib.h"
 #include "errno.h"
 #include "string.h"
 #include "sys/stat.h"
-
-// INCLUDE MESSAGE QUEUE
 #include "sys/msg.h"
-
-// INCLUDE FILE
 #include "fcntl.h"
 #include "unistd.h"
+#include "time.h"
+#include "errno.h"
 
-#include "inc/err_exit.h"
+// INCLUDE PROGETTO
 #include "inc/defines.h"
+#include "inc/err_exit.h"
 #include "inc/fifo.h"
+#include "inc/client.h"
 
 const char *base_path_to_device_fifo = "/tmp/dev_fifo.";
 
@@ -43,7 +41,7 @@ int readInt(const char *buffer)
     long int res = strtol(buffer, &endptr, 10);
 
     if (errno != 0 || *endptr != '\n' || res < 0) {
-        printf("invalid input argument\n");
+        printf("<read int> invalid input argument\n");
         exit(1);
     }
 
@@ -57,7 +55,7 @@ double readDouble(const char *buffer)
     double res = strtod(buffer, &endptr);
 
     if (errno != 0 || *endptr != '\n' || res < 0) {
-        printf("invalid input argument\n");
+        printf("<read double> invalid input argument\n");
         exit(1);
     }
     
@@ -77,6 +75,40 @@ void sendMessage(Message *msg)
     closeFIFO(fd_device_fifo);
 }
 
+void writeOutAck(Message *msg, Response response)
+{
+    if (mkdir("out/", S_IRUSR | S_IWUSR | S_IXUSR) == -1 && errno != EEXIST)
+        ErrExit("mkdir failed");
+
+    char path_to_fileout[25];
+    sprintf(path_to_fileout, "out/out_%d.txt", msg->message_id);
+    
+    int fd_out = open(path_to_fileout, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR);
+    if (fd_out == -1)
+        ErrExit("open file out failed");
+
+    char header[sizeof(msg->message) + 30];
+    sprintf(header, "%s %d: %s\n", "Messaggio", msg->message_id, msg->message);
+    if (write(fd_out, header, strlen(header)) == -1)
+        ErrExit("write failed");
+
+    char buffer[100];
+    for (int i = 0; i < N_DEVICES; i++) {
+        memset(buffer, 0, sizeof(buffer));   
+        // TODO scrittura su file
+        char timestamp[20];
+        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&response.ack[i].timestamp));
+        sprintf(buffer, "%d, %d, %s\n", response.ack[i].pid_sender, response.ack[i].pid_receiver, timestamp);
+
+        printf("%s", buffer);
+        if (write(fd_out, buffer, strlen(buffer)) == -1)
+            ErrExit("write failed");
+    }
+
+    if (close(fd_out) == -1)
+        ErrExit("close file out failed");
+}
+
 int main(int argc, char *argv[])
 {
     // Controlla gli argomenti da linea di comando
@@ -85,7 +117,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    int fd_input = 0;
+    int fd_input = 1;
     if (argc == 3) {
         // se c'è il file in input, lo usa come standard input
         close(STDIN_FILENO);
@@ -108,26 +140,26 @@ int main(int argc, char *argv[])
     size_t len;
 
     // Legge il pid del device ricevente
-    if (fd_input)
+    if (!fd_input)
         printf("Lettura input messaggio dal file %s ...\n", argv[2]);
 
-    if (!fd_input)
+    if (fd_input)
         printf("Insert pid receiver device: ");
     fgets(buffer, sizeof(buffer), stdin);
     msg.pid_receiver = readInt(buffer);
 
-    if (!fd_input)
+    if (fd_input)
         printf("Insert message id: ");
     fgets(buffer, sizeof(buffer), stdin);
     msg.message_id = readInt(buffer);
 
-    if (!fd_input)
+    if (fd_input)
         printf("Insert message: ");
     fgets(msg.message, sizeof(msg.message), stdin);
     len = strlen(msg.message);
     msg.message[len - 1] = '\0';
 
-    if (!fd_input)
+    if (fd_input)
         printf("Insert max distance: ");
     fgets(buffer, sizeof(buffer), stdin);
     msg.max_distance = readDouble(buffer);
@@ -152,7 +184,7 @@ int main(int argc, char *argv[])
 
     writeOutAck(&msg, response);
 
-    if (fd_input)
+    if (!fd_input)
         if (close(fd_input))
             ErrExit("close file input failed");
 

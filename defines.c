@@ -3,10 +3,7 @@
 ///         specifiche del progetto.
 
 #include "stdio.h"
-#include "fcntl.h"
-#include "unistd.h"
 #include "time.h"
-#include "string.h"
 
 #include "inc/defines.h"
 #include "inc/err_exit.h"
@@ -27,36 +24,50 @@ void printDebugMessage(Message *msg)
     }
 }
 
-void writeOutAck(Message *msg, Response response)
+int compareAcks (const void *a, const void *b) 
 {
-    char path_to_fileout[25];
-    sprintf(path_to_fileout, "out_%d.txt", msg->message_id);
-    
-    // printf("Apertura file out '%s'...", path_to_fileout);
-    int fd_out = open(path_to_fileout, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR);
-    if (fd_out == -1)
-        ErrExit("open file out failed");
+    Acknowledgment *first_ack = (Acknowledgment *)a;
+    Acknowledgment *second_ack = (Acknowledgment *)b;
 
-    char header[sizeof(msg->message) + 30];
-    sprintf(header, "%s %d: %s\n", "Messaggio", msg->message_id, msg->message);
-    if (write(fd_out, header, strlen(header)) == -1)
-        ErrExit("write failed");
+    return (first_ack->timestamp - second_ack->timestamp);
+}
 
-    char buffer[100];
-    for (int i = 0; i < N_DEVICES; i++) {
-        memset(buffer, 0, sizeof(buffer));   
-        // TODO scrittura su file
-        char timestamp[20];
-        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&response.ack[i].timestamp));
-        sprintf(buffer, "%d, %d, %s\n", response.ack[i].pid_sender, response.ack[i].pid_receiver, timestamp);
+int checkAckAvailable(Acknowledgment *shm_ptr_acklist) 
+{
+    int result = 0;
 
-        printf("%s", buffer);
-        if (write(fd_out, buffer, strlen(buffer)) == -1)
-            ErrExit("write failed");
+    for (int i = 0; i < SIZE_ACK_LIST && result == 0; i++) {
+        if (shm_ptr_acklist[i].message_id == 0) {
+            result = 1;
+        }
     }
 
-    if (close(fd_out) == -1)
-        ErrExit("close file out failed");
+    return result;
+}
+
+void addAck(Acknowledgment *shm_ptr_acklist, Message *msg) 
+{
+    Acknowledgment *ack = NULL;
+    for (int i = 0; SIZE_ACK_LIST && ack == NULL; i++) {
+        if (shm_ptr_acklist[i].message_id == 0) {
+            ack = &shm_ptr_acklist[i];
+            ack->pid_sender = msg->pid_sender;
+            ack->pid_receiver = msg->pid_receiver;
+            ack->message_id = msg->message_id;
+            ack->timestamp = time(NULL);
+            break;
+        }
+    }
+}
+
+int ackListContains(Acknowledgment *shm_ptr_acklist, pid_t pid_receiver, int message_id) 
+{
+    int result = 0;
+    for (int i = 0; i < SIZE_ACK_LIST && !result; i++) {
+        if (shm_ptr_acklist[i].message_id == message_id && shm_ptr_acklist[i].pid_receiver == pid_receiver)
+            result = 1;
+    }
+    return result;
 }
 
 int contAckByMessageId(Acknowledgment *shm_ptr_acklist, int message_id) 

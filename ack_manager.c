@@ -1,17 +1,26 @@
+/// @file ack_manager.c
+/// @brief Contiene l'implementazione dell'ack manager.
+/*
+L'ack manager gestisce la lista condivisa di acknowledgments. In particolare, scandisce ad intervalli
+regolari di 5 secondi la lista per controllare se tutti i dispositivi hanno ricevuto il messaggio.
+In caso positivo, invia subito la lista di acknowledgments al client per mezzo di un unico messaggio
+depositato in una message queue e rimuove (marcandoli come liberi) gli acknowledgment relativi al messaggio stesso
+della memoria condivisa.
+*/
 #include "stdio.h"
 #include "stdlib.h"
 #include "signal.h"
 #include "unistd.h"
 #include "time.h"
 #include "sys/stat.h"
-// INCLUDE MESSAGE QUEUE
 #include "sys/msg.h"
 
-#include "inc/err_exit.h"
+// INCLUDE PROGETTO
 #include "inc/defines.h"
-#include "inc/ack_manager.h"
+#include "inc/err_exit.h"
 #include "inc/shared_memory.h"
 #include "inc/semaphore.h"
+#include "inc/ack_manager.h"
 
 Acknowledgment *shm_ptr_acklist;
 int msq_id;
@@ -34,7 +43,6 @@ void ackManagerSigHandler(int sig)
 
 void changeAckManagerSignalHandler() 
 {
-    // printf("<ack manager pid: %d, id: %d> Changing signal handler...\n", getpid(), id_ack manager);
     sigset_t signals_set;
     if (sigfillset(&signals_set) == -1)
         ErrExit("<ack manager> sigfillset failed");
@@ -55,6 +63,17 @@ void changeAckManagerSignalHandler()
         ErrExit("<ack manager> change signal handler failed");
 }
 
+void ackManagerRoutine() 
+{
+    for (int i = 0; i < SIZE_ACK_LIST; i++) {
+        if (shm_ptr_acklist[i].message_id != 0) {
+            if (contAckByMessageId(shm_ptr_acklist, shm_ptr_acklist[i].message_id) == N_DEVICES) {
+                sendResponseToClient(shm_ptr_acklist[i].message_id);
+            }
+        }
+    }
+}
+
 void sendResponseToClient(int message_id) 
 {
     Response response;
@@ -66,25 +85,15 @@ void sendResponseToClient(int message_id)
     for (int i = 0; i < SIZE_ACK_LIST; i++) {
         if (shm_ptr_acklist[i].message_id == message_id) {
             response.ack[id_ack++] = shm_ptr_acklist[i];
-            shm_ptr_acklist[i] = ack_null;
+            shm_ptr_acklist[i] = ack_null; // libera lo spazio nella lista di ack
         }
     }
+
+    qsort(response.ack, N_DEVICES, sizeof(Acknowledgment), compareAcks);
 
     size_t size = sizeof(Response) - sizeof(long);
     if (msgsnd(msq_id, &response, size, 0) == -1)
         ErrExit("<ack manager> msgsnd send response to client failed");
-}
-
-
-void ackManagerRoutine() 
-{
-    for (int i = 0; i < SIZE_ACK_LIST; i++) {
-        if (shm_ptr_acklist[i].message_id != 0) {
-            if (contAckByMessageId(shm_ptr_acklist, shm_ptr_acklist[i].message_id) == N_DEVICES) {
-                sendResponseToClient(shm_ptr_acklist[i].message_id);
-            }
-        }
-    }
 }
 
 void execAckManager(int shmid_acklist, int msg_queue_key, int semid) 

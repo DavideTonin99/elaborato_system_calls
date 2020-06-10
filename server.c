@@ -9,7 +9,6 @@ Genera i processi figli device e ack manager.
 Gestisce il tempo per l'esecuzione dei movimenti dei device, ogni 2 secondi attiva il movimento
 del primo device, che genera poi in cascata l'attivazione dei movimenti di tutti i device.
 */
-
 #include "stdio.h"
 #include "stdlib.h"
 #include "signal.h"
@@ -18,6 +17,7 @@ del primo device, che genera poi in cascata l'attivazione dei movimenti di tutti
 #include "string.h"
 #include "sys/wait.h"
 
+// INCLUDE PROGETTO
 #include "inc/defines.h"
 #include "inc/err_exit.h"
 #include "inc/shared_memory.h"
@@ -25,6 +25,7 @@ del primo device, che genera poi in cascata l'attivazione dei movimenti di tutti
 #include "inc/fifo.h"
 #include "inc/device.h"
 #include "inc/ack_manager.h"
+#include "inc/server.h"
 
 int semid = -1;
 
@@ -93,15 +94,15 @@ void initDevices(int n_devices, const char *path_to_position_file)
             execDevice(i, semid, shmid_board, shmid_acklist, path_to_position_file);
         }
     }
+}
 
-    // genera l'ack_manager
-    if (pid != 0) {
-        pid = fork();
-        if (pid == -1) {
-            ErrExit("ack_manager not created!");
-        } else if (pid == 0) {
-            execAckManager(shmid_acklist, msg_queue_key, semid);
-        }
+void initAckManager()
+{
+    pid_t pid = fork();
+    if (pid == -1) {
+        ErrExit("ack_manager not created!");
+    } else if (pid == 0) {
+        execAckManager(shmid_acklist, msg_queue_key, semid);
     }
 }
 
@@ -130,6 +131,7 @@ int main(int argc, char *argv[])
     shmid_acklist = allocSharedMemory(IPC_PRIVATE, sizeof(Acknowledgment) * SIZE_ACK_LIST);
 
     initDevices(N_DEVICES, argv[2]);
+    initAckManager();
     
     int i = 0;
     while (1) {
