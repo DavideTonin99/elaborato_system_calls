@@ -2,10 +2,10 @@ CFLAGS   = -Wall -std=gnu99
 INCLUDES = -I .
 OBJDIR   = obj
 
-SERVER_SRCS = ack_manager.c device.c defines.c err_exit.c shared_memory.c semaphore.c fifo.c server.c
+SERVER_SRCS = server.c ack_manager.c device.c defines.c utils/err_exit.c utils/shared_memory.c utils/semaphore.c utils/fifo.c
 SERVER_OBJS = $(addprefix $(OBJDIR)/, $(SERVER_SRCS:.c=.o))
 
-CLIENT_SRCS = client.c defines.c fifo.c err_exit.c
+CLIENT_SRCS = client.c defines.c utils/fifo.c utils/err_exit.c
 CLIENT_OBJS = $(addprefix $(OBJDIR)/, $(CLIENT_SRCS:.c=.o))
 
 all: $(OBJDIR) server client
@@ -19,9 +19,12 @@ client: $(CLIENT_OBJS)
 	@$(CC) $^ -o $@
 
 $(OBJDIR):
-	@mkdir -p $(OBJDIR)
+	@mkdir -p $(OBJDIR)/utils
 
 $(OBJDIR)/%.o: %.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
+
+$(OBJDIR)/utils/%.o: utils/%.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
 
 run: clean server

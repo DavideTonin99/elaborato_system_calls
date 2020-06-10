@@ -2,9 +2,9 @@
 /// @brief Contiene l'implementazione delle funzioni
 ///         specifiche per la gestione delle FIFO.
 
-#include "inc/err_exit.h"
-#include "inc/fifo.h"
-#include "inc/defines.h"
+#include "../inc/err_exit.h"
+#include "../inc/fifo.h"
+#include "../inc/defines.h"
 
 #include "sys/stat.h"
 #include "sys/types.h"
