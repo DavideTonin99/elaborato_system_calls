@@ -108,6 +108,7 @@ void printDebugDevice(Position position, int n_messages, Message *messages_buffe
  * @param semid: id set semafori
  * @param shmid_board: id zona di memoria condivisa della scacchiera
  * @param shmid_acklist: id zona di memoria condivisa della ack list
+ * @param shmid_deviceslist: id zona di memoria condivisa della lista di device
  * @param path_to_position_file: path del file posizioni
 */
-void execDevice(int _id_device, int semid, int shmid_board, int shmid_acklist, const char *path_to_position_file);
+void execDevice(int _id_device, int semid, int shmid_board, int shmid_acklist, int shmid_deviceslist, const char *path_to_position_file);

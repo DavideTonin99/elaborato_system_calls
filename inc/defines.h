@@ -19,6 +19,7 @@
 // --semafori
 #define SEMNUM_BOARD N_DEVICES
 #define SEMNUM_ACKLIST N_DEVICES+1
+#define SEMNUM_DEVICESLIST N_DEVICES+2
 
 typedef struct
 {

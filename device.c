@@ -30,6 +30,7 @@ L'ultimo device che riceve il messaggio, lo cancella.
 // memoria condivisa
 pid_t *shm_ptr_board;
 Acknowledgment *shm_ptr_acklist;
+pid_t *shm_ptr_deviceslist;
 
 // device
 int id_device; 
@@ -47,6 +48,7 @@ void freeDeviceResources()
 {
     freeSharedMemory(shm_ptr_board);
     freeSharedMemory(shm_ptr_acklist);
+    freeSharedMemory(shm_ptr_deviceslist);
 
     if (close(fd_device_fifo) == -1)
         ErrExit("<device> close device fifo failed");
@@ -143,6 +145,16 @@ void getNextPosition(char *next_line, Position *position)
     position->col = atoi(col);
 }
 
+int isDevice(pid_t pid)
+{
+    int result = 0;
+
+    for (int i = 0; i < N_DEVICES && !result; i++)
+        if (pid != 0 && shm_ptr_deviceslist[i] == pid)
+            result = 1;
+    return result;
+}
+
 void readMessages(Message *messages_buffer, int *n_messages, int semid) 
 {
     int bR;
@@ -159,15 +171,25 @@ void readMessages(Message *messages_buffer, int *n_messages, int semid)
             if (bR == -1) {
                 ErrExit("<device> read fifo failed");
             } else if (bR == sizeof(Message)) {
-                // printf("<device %d> Read:\n", getpid());
-                // printDebugMessage(&msg);
+                semOp(semid, (unsigned short)SEMNUM_DEVICESLIST, -1); // blocca la lista dei device
+                int is_device = isDevice(msg.pid_sender);
+                semOp(semid, (unsigned short)SEMNUM_DEVICESLIST, 1); // sblocca la lista dei device
+
                 semOp(semid, (unsigned short)SEMNUM_ACKLIST, -1); // blocca la ack list
-                addAck(shm_ptr_acklist, &msg);
-                if (contAckByMessageId(shm_ptr_acklist, msg.message_id) < N_DEVICES) {
-                    messages_buffer[*n_messages] = msg;
-                    (*n_messages)++;
+                if (!is_device) {
+                    // se il messaggio arriva dal client, ma è già presenta nella ack list, invia un segnale di errore al client
+                    if (contAckByMessageId(shm_ptr_acklist, msg.message_id) > 0) {
+                        kill(msg.pid_sender, SIGUSR1);
+                        
+                        semOp(semid, (unsigned short)SEMNUM_ACKLIST, 1); // sblocca la ack list                    
+                        continue;
+                    }
                 }
-                semOp(semid, (unsigned short)SEMNUM_ACKLIST, 1); // sblocca la ack list
+                addAck(shm_ptr_acklist, &msg);
+                messages_buffer[*n_messages] = msg;
+                (*n_messages)++;
+
+                semOp(semid, (unsigned short)SEMNUM_ACKLIST, 1); // sblocca la ack list                    
             }
         }
     } while (bR > 0);
@@ -256,7 +278,7 @@ void printDebugDevice(Position position, int n_messages, Message *messages_buffe
     }
 }
 
-void execDevice(int _id_device, int semid, int shmid_board, int shmid_acklist, const char *path_to_position_file) 
+void execDevice(int _id_device, int semid, int shmid_board, int shmid_acklist, int shmid_deviceslist, const char *path_to_position_file) 
 {
     id_device = _id_device;
 
@@ -264,6 +286,11 @@ void execDevice(int _id_device, int semid, int shmid_board, int shmid_acklist, c
 
     shm_ptr_board = (pid_t *)getSharedMemory(shmid_board, 0);
     shm_ptr_acklist = (Acknowledgment *)getSharedMemory(shmid_acklist, 0);
+    shm_ptr_deviceslist = (pid_t *)getSharedMemory(shmid_deviceslist, 0);
+
+    semOp(semid, (unsigned short)SEMNUM_DEVICESLIST, -1); // blocca la lista dei device
+    shm_ptr_deviceslist[id_device] = getpid();
+    semOp(semid, (unsigned short)SEMNUM_DEVICESLIST, 1); // sblocca la lista dei device
 
     sprintf(path_to_device_fifo, "%s%d", base_path_to_device_fifo, getpid());
     createFIFO(path_to_device_fifo, S_IRUSR | S_IWUSR);

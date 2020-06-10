@@ -29,8 +29,9 @@ int initSemaphoreSet(int length, int devices)
 
     // Inizializza i semafori
     // I primi 'devices' semafori sono per i device
-    // Il penultimo semaforo gestisce l'accesso alla scacchiera
-    // L'ultimo semaforo gestisce l'accesso alla lista di acknowledgments
+    // Il semaforo successivo all'ultimo device gestisce l'accesso alla scacchiera
+    // Il penultimo semaforo gestisce l'accesso alla lista di acknowledgments
+    // L'ultimo semaforo gestisce l'accesso alla lista dei device
     unsigned short sem_init_values[length];
     int i = 0;
     sem_init_values[i] = 1; // il primo device a 1
@@ -41,6 +42,7 @@ int initSemaphoreSet(int length, int devices)
     // board: 1 -> bloccato, 0 -> sbloccato
     sem_init_values[i] = 1;
     sem_init_values[i+1] = 1;
+    sem_init_values[i+2] = 1;
     union semun arg;
     arg.array = sem_init_values;
 

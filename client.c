@@ -25,6 +25,7 @@ Una volta generato il file di output il client termina.
 #include "unistd.h"
 #include "time.h"
 #include "errno.h"
+#include "signal.h"
 
 // INCLUDE PROGETTO
 #include "inc/defines.h"
@@ -33,6 +34,20 @@ Una volta generato il file di output il client termina.
 #include "inc/client.h"
 
 const char *base_path_to_device_fifo = "/tmp/dev_fifo.";
+
+void sigHandler(int sig)
+{
+    if (sig == SIGUSR1) {
+        printf("MESSAGE ID NON UNIVOCO !!!\n");
+        exit(1);
+    }
+}
+
+void changeSignalHandler() 
+{
+    if (signal(SIGUSR1, sigHandler) == SIG_ERR)
+        ErrExit("change signal handler failed");
+}
 
 int readInt(const char *buffer) 
 {
@@ -116,6 +131,8 @@ int main(int argc, char *argv[])
         printf("Usage: %s msg_queue_key [input_filename]\n", argv[0]);
         exit(1);
     }
+
+    changeSignalHandler();
 
     int fd_input = 1;
     if (argc == 3) {
