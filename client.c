@@ -32,6 +32,7 @@ Una volta generato il file di output il client termina.
 
 #include "err_exit.h"
 #include "defines.h"
+#include "fifo.h"
 
 const char *base_path_to_device_fifo = "/tmp/dev_fifo.";
 
@@ -69,17 +70,11 @@ void sendMessage(Message *msg)
     char path_to_device_fifo[25];
     sprintf(path_to_device_fifo, "%s%d", base_path_to_device_fifo, msg->pid_receiver);
     
-    int device_fifo = open(path_to_device_fifo, O_WRONLY);
-    if (device_fifo == -1)
-        ErrExit("open device fifo failed");
+    int fd_device_fifo = openFIFO(path_to_device_fifo, O_WRONLY);
     
     printf("Sending the message %d to device %d...\n", msg->message_id, msg->pid_receiver);
-    // Invia il messaggio al device
-    if (write(device_fifo, msg, sizeof(Message)) != sizeof(Message))
-        ErrExit("write message failed");
-    
-    if (close(device_fifo))
-        ErrExit("close device fifo failed");
+    writeFIFO(fd_device_fifo, msg);
+    closeFIFO(fd_device_fifo);
 }
 
 int main(int argc, char *argv[])

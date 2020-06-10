@@ -18,8 +18,8 @@ del primo device, che genera poi in cascata l'attivazione dei movimenti di tutti
 #include "string.h"
 #include "sys/wait.h"
 
-#include "err_exit.h"
 #include "defines.h"
+#include "err_exit.h"
 #include "shared_memory.h"
 #include "semaphore.h"
 #include "fifo.h"
@@ -87,7 +87,7 @@ void initDevices(int n_devices, const char *path_to_position_file)
     for (int i = 0; i < n_devices; i++) {
         pid = fork();
         if (pid == -1) {
-            printf("child %d not created!", i);
+            printf("device %d not created!", i);
             exit(0);
         } else if (pid == 0) {
             execDevice(i, semid, shmid_board, shmid_acklist, path_to_position_file);
@@ -121,15 +121,10 @@ int main(int argc, char *argv[])
 
     changeSignalHandler();
 
-    // Apre il file posizioni
-    int file_pos = open(argv[2], O_RDONLY);
-    if (file_pos == -1)
-        ErrExit("open file posizioni failed");
-
-    printf("<server> Initialization semaphores...\n");
+    printf("Initialization semaphores...\n");
     semid = initSemaphoreSet(N_DEVICES+2, N_DEVICES);
 
-    printf("<server> Initialization shared memory...\n");
+    printf("Initialization shared memory...\n");
     // Crea i segmenti di memoria condivisa
     shmid_board = allocSharedMemory(IPC_PRIVATE, sizeof(pid_t) * BOARD_ROWS * BOARD_COLS);
     shmid_acklist = allocSharedMemory(IPC_PRIVATE, sizeof(Acknowledgment) * SIZE_ACK_LIST);

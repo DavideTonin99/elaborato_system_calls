@@ -61,12 +61,12 @@ void sendResponseToClient(int message_id)
     response.mtype = message_id;
     int id_ack = 0;
 
-    Acknowledgment ack = {0};
+    Acknowledgment ack_null = {0};
 
     for (int i = 0; i < SIZE_ACK_LIST; i++) {
         if (shm_ptr_acklist[i].message_id == message_id) {
             response.ack[id_ack++] = shm_ptr_acklist[i];
-            shm_ptr_acklist[i] = ack;
+            shm_ptr_acklist[i] = ack_null;
         }
     }
 
@@ -111,7 +111,7 @@ void execAckManager(int shmid_acklist, int msg_queue_key, int semid)
                 printf("<ack %d> %d %d %d %s\n", i, ack.pid_sender, ack.pid_receiver, ack.message_id, buff);
             }
         }
-        semOp(semid, SEMNUM_ACKLIST, 1);
         ackManagerRoutine();
+        semOp(semid, SEMNUM_ACKLIST, 1);
     }
 }

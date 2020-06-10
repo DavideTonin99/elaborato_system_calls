@@ -1,3 +1,10 @@
+/// @file device.c
+/// @brief Contiene l'implementazione del DEVICE
+/*
+Un device viene generato dal server.
+
+*/
+
 #include "stdio.h"
 #include "stdlib.h"
 #include "signal.h"
@@ -9,9 +16,10 @@
 
 #include "defines.h"
 #include "err_exit.h"
-#include "device.h"
 #include "semaphore.h"
 #include "shared_memory.h"
+#include "fifo.h"
+#include "device.h"
 
 // memoria condivisa
 pid_t *shm_ptr_board;
@@ -77,7 +85,6 @@ void changeDeviceSignalHandler()
 void readNextLine(char *next_line) 
 {
     // contiene la riga successiva
-    // ogni valore può essere di due cifre, due per ogni device, per N_DEVICES + le pipe come divisori di coordinate
     char row[ROW_BUFFER_SIZE] = {0};
     // contiene byte successivo
     char buffer[2] = {0};
@@ -96,30 +103,16 @@ void readNextLine(char *next_line)
 
 void getNextPosition(char *next_line, Position *position)
 {
-    for (int cont_pipes = 0; cont_pipes < id_device && *next_line != '\0'; next_line++) {
-        if (*next_line == '|')
-            cont_pipes++;
+    char *pos = strtok(next_line, "|");
+    for (int cont_pipes = 0; cont_pipes < id_device; cont_pipes++) {
+        pos = strtok(NULL, "|");
     }
 
-    // prende il valore della riga
-    char buffer[ROW_BUFFER_SIZE];
-    int index;
-    
-    for(index = 0; *next_line != ','; next_line++, index++)
-        buffer[index] = *next_line;
-    
-    position->row = atoi(buffer);
-    // salta la virgola
-    next_line++; 
+    char *row = strtok(pos, ",");
+    char *col = strtok(NULL, ",");
 
-    // reset buffer
-    memset(buffer, 0, sizeof(buffer));     
-    
-    // prende il valore della colonna
-    for(index = 0; *next_line != '\0' && *next_line != '|'; next_line++, index++)
-        buffer[index] = *next_line;
-    
-    position->col = atoi(buffer);
+    position->row = atoi(row);
+    position->col = atoi(col);
 }
 
 void waitTurnAndBoard(int semid) 
@@ -213,28 +206,19 @@ void sendMessages(Position *position, Message *messages_buffer, int *n_messages,
 
         if (pid_next_device != 0) {
             sprintf(path_to_receiver_device_fifo, "%s%d", base_path_to_device_fifo, pid_next_device);
-            int fd_receiver_device_fifo = open(path_to_receiver_device_fifo, O_WRONLY);
+            int fd_receiver_device_fifo = openFIFO(path_to_receiver_device_fifo, O_WRONLY);
 
-            if (fd_receiver_device_fifo == -1) {
-                printf("<device %d> open fifo receiver device (pid = %d) failed\n", getpid(), pid_next_device);
-            } else {                       
-                Message msg = messages_buffer[i];
-                msg.pid_sender = getpid();
-                msg.pid_receiver = pid_next_device;
+            Message msg = messages_buffer[i];
+            msg.pid_sender = getpid();
+            msg.pid_receiver = pid_next_device;
 
-                int res = write(fd_receiver_device_fifo, &msg, sizeof(Message));
-                if (res == -1 || res != sizeof(Message)) {
-                    printf("<device %d> write to fifo receiver device (pid = %d) failed\n", getpid(), pid_next_device);
-                } else {
-                    // shift a sinistra per cancellare il messaggio appena inviato
-                    if (i < MSG_BUFFER_SIZE-1)
-                        messages_buffer[i] = messages_buffer[i+1];
-                    (*n_messages)--;
-                }
-            }
+            writeFIFO(fd_receiver_device_fifo, &msg);
+            // shift a sinistra per cancellare il messaggio appena inviato
+            for (int j = i; j < *n_messages && j < MSG_BUFFER_SIZE-1; j++)
+                messages_buffer[j] = messages_buffer[j+1];
+            (*n_messages)--;
 
-            if (close(fd_receiver_device_fifo) == -1)
-                ErrExit("<device> close receiver device fifo failed");
+            closeFIFO(fd_receiver_device_fifo);
         }
     }
 }
@@ -269,10 +253,43 @@ void readMessages(Message *messages_buffer, int *n_messages, int semid)
     } while (bR > 0);
 }
 
+void moveDevice(Position *position, char *next_line) 
+{
+    int old_position_index = position->row * BOARD_COLS + position->col;
+
+    readNextLine(next_line);
+    getNextPosition(next_line, position);
+
+    int next_position_index = position->row * BOARD_COLS + position->col;
+
+    // se la nuova posizione non è occupata, sposta il device
+    if (shm_ptr_board[next_position_index] == 0) {
+        // prima libera la precedente zona occupata
+        shm_ptr_board[old_position_index] = 0;
+        // occupa la nuova zona
+        shm_ptr_board[next_position_index] = getpid();
+    } else {
+        // altrimenti il device resta fermo, e ripristina la posizione
+        position->row = old_position_index / BOARD_COLS;
+        position->col = old_position_index % BOARD_COLS;
+    }
+}
+
+void printDebugDevice(Position position, int n_messages, Message *messages_buffer) 
+{
+    printf("%d %d %d msgs: ", getpid(), position.row, position.col);
+    // stampa lista messages
+    for (int i = 0; i < n_messages; i++)
+        printf("%d, ", messages_buffer[i].message_id);
+    printf("\n");
+    if (id_device == N_DEVICES - 1) {
+        printf("####################################################\n");
+    }
+}
+
 void execDevice(int _id_device, int semid, int shmid_board, int shmid_acklist, const char *path_to_position_file) 
 {
     id_device = _id_device;
-    // printf("<device pid: %d, id: %d> Created !!!\n", getpid(), _id_device);
 
     changeDeviceSignalHandler();
 
@@ -280,15 +297,9 @@ void execDevice(int _id_device, int semid, int shmid_board, int shmid_acklist, c
     shm_ptr_acklist = (Acknowledgment *)getSharedMemory(shmid_acklist, 0);
 
     sprintf(path_to_device_fifo, "%s%d", base_path_to_device_fifo, getpid());
-
-    // printf("<device pid: %d, id: %d> Creating fifo...\n", getpid(), id_device);
-    int res_device_fifo = mkfifo(path_to_device_fifo, S_IRUSR | S_IWUSR | S_IWGRP);
-    if (res_device_fifo == -1)
-        ErrExit("<device> mkfifo failed");
-
-    fd_device_fifo = open(path_to_device_fifo, O_RDONLY | O_NONBLOCK);
-    if (fd_device_fifo == -1)
-        ErrExit("<device> open fifo failed");
+    createFIFO(path_to_device_fifo, S_IRUSR | S_IWUSR);
+    
+    fd_device_fifo = openFIFO(path_to_device_fifo, O_RDONLY | O_NONBLOCK);
 
     fd_position = open(path_to_position_file, O_RDONLY);
     if (fd_position == -1)
@@ -303,36 +314,17 @@ void execDevice(int _id_device, int semid, int shmid_board, int shmid_acklist, c
     int n_messages = 0;
 
     while(1) {
+        // aspetta il turno e l'accesso alla scacchiera
         waitTurnAndBoard(semid);
+        // se ha messaggi nel buffer di ricezione, prova ad inviarli
         sendMessages(&position, messages_buffer, &n_messages, semid);
+        // legge i messaggi dalla FIFO
         readMessages(messages_buffer, &n_messages, semid);
-
-        int old_position_index = position.row * BOARD_COLS + position.col;
-
-        readNextLine(next_line);
-        getNextPosition(next_line, &position);
-
-        int next_position_index = position.row * BOARD_COLS + position.col;
-
-        // se la nuova posizione non è occupata, sposta il device
-        if (shm_ptr_board[next_position_index] == 0) {
-            // prima libera la precedente zona occupata
-            shm_ptr_board[old_position_index] = 0;
-            // occupa la nuova zona
-            shm_ptr_board[next_position_index] = getpid();
-        } else {
-            // altrimenti il device resta fermo, e ripristina la posizione
-            position.row = old_position_index / BOARD_COLS;
-            position.col = old_position_index % BOARD_COLS;
-        }
-        printf("%d %d %d msgs: ", getpid(), position.row, position.col);
-        // stampa lista messages
-        for (int i = 0; i < n_messages; i++)
-            printf("%d, ", messages_buffer[i].message_id);
-        printf("\n");
-        if (id_device == N_DEVICES - 1) {
-            printf("####################################################\n");
-        }
+        // effettua il movimento
+        moveDevice(&position, next_line);
+        // stampa la riga di debug
+        printDebugDevice(position, n_messages, messages_buffer);
+        // segnala la fine del turno (liberando i semafori opportuni)
         signalEndTurn(semid);
     }
 }

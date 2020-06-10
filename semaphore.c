@@ -30,7 +30,7 @@ int initSemaphoreSet(int length, int devices)
     // Inizializza i semafori
     // I primi 'devices' semafori sono per i device
     // Il penultimo semaforo gestisce l'accesso alla scacchiera
-    // L'ultimo semaforo gestisce l'accesso alla di acknowledgments
+    // L'ultimo semaforo gestisce l'accesso alla lista di acknowledgments
     unsigned short sem_init_values[length];
     int i = 0;
     sem_init_values[i] = 1; // il primo device a 1

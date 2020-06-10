@@ -30,7 +30,7 @@ void printDebugMessage(Message *msg)
 void writeOutAck(Message *msg, Response response)
 {
     char path_to_fileout[25];
-    sprintf(path_to_fileout, "%s%d%s", "out_", msg->message_id, ".txt");
+    sprintf(path_to_fileout, "out_%d.txt", msg->message_id);
     
     // printf("Apertura file out '%s'...", path_to_fileout);
     int fd_out = open(path_to_fileout, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR);
