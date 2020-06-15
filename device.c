@@ -62,7 +62,7 @@ void freeDeviceResources()
 void deviceSigHandler(int sig)
 {
     if (sig == SIGTERM || sig == SIGINT) {
-        printf("<device pid: %d>remove resources and exit...\n", getpid());
+        coloredPrintf("red", 0, "<device pid: %d>remove resources and exit...\n", getpid());
         freeDeviceResources();
         exit(0);
     }
@@ -70,7 +70,6 @@ void deviceSigHandler(int sig)
 
 void changeDeviceSignalHandler() 
 {
-    // printf("<device pid: %d, id: %d> Changing signal handler...\n", getpid(), id_device);
     sigset_t signals_set;
     if (sigfillset(&signals_set) == -1)
         ErrExit("<device> sigfillset failed");
@@ -272,20 +271,21 @@ void moveDevice(Position *position, char *next_line)
 
 void printDebugDevice(Position position, int n_messages, Message *messages_buffer) 
 {
-    printf("%d %d %d msgs: ", getpid(), position.row, position.col);
+    coloredPrintf("default", 0, "%d %d %d msgs: ", getpid(), position.row, position.col);
     // stampa lista messages
     for (int i = 0; i < n_messages; i++)
-        printf("%d, ", messages_buffer[i].message_id);
+        coloredPrintf("green", 1, "%d, ", messages_buffer[i].message_id);
     printf("\n");
     if (id_device == N_DEVICES - 1) {
-        printf("####################################################\n");
+        coloredPrintf("yellow", 0, "####################################################\n");
     }
 }
 
 void execDevice(int _id_device, int semid, int shmid_board, int shmid_acklist, int shmid_deviceslist, const char *path_to_position_file) 
 {
-    id_device = _id_device;
+    coloredPrintf("cyan", 0, "created new device %d\n", getpid());
 
+    id_device = _id_device;
     changeDeviceSignalHandler();
 
     shm_ptr_board = (pid_t *)getSharedMemory(shmid_board, 0);

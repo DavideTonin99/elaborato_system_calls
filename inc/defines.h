@@ -87,3 +87,20 @@ int ackListContains(Acknowledgment *shm_ptr_acklist, pid_t pid_receiver, int mes
  * @return: il numero di ack (0 se non ce ne sono)
 */
 int contAckByMessageId(Acknowledgment *shm_ptr_acklist, int message_id);
+
+// -- FUNZIONI PRINT PERSONALIZZATE
+/**
+ * coloredPrintf: come una printf, però colorata
+ * @param color: il colore da settare
+ * @param bold: da settare a 1 se la scritta deve essere in grassetto, 0 altrimenti
+ * @param format: format della printf
+ */
+void coloredPrintf(char *color, int bold, const char * format, ... );
+
+/**
+ * setPrintColor: setta il colore della printf
+ * @param color: il colore da settare
+ * @param bold: da settare a 1 se la scritta deve essere in grassetto, 0 altrimenti
+ * @notes: i colori supportati sono red, green, yellow, blue, magenta, cyan
+ */
+void setPrintColor(char *color, int bold);

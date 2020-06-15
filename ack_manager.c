@@ -35,7 +35,7 @@ void ackManagerFreeResources()
 void ackManagerSigHandler(int sig)
 {
     if (sig == SIGTERM || sig == SIGINT) {
-        printf("<ack manager pid: %d>remove resources and exit...\n", getpid());
+        coloredPrintf("red", 0, "<ack manager pid: %d>remove resources and exit...\n", getpid());
         ackManagerFreeResources();
         exit(0);
     }
@@ -110,14 +110,14 @@ void execAckManager(int shmid_acklist, int msg_queue_key, int semid)
         semOp(semid, SEMNUM_ACKLIST, -1);
 
         // DEBUG
-        printf("Ack list:\n");
+        coloredPrintf("blue", 1, "Ack list:\n");
         for (int i = 0; i < SIZE_ACK_LIST; i++) {
             if (shm_ptr_acklist[i].message_id != 0) {
                 Acknowledgment ack = shm_ptr_acklist[i];
                 char buff[20];
                 strftime(buff, sizeof(buff), "%Y-%m-%d %H:%M:%S", localtime(&ack.timestamp));
 
-                printf("<ack %d> %d %d %d %s\n", i, ack.pid_sender, ack.pid_receiver, ack.message_id, buff);
+                coloredPrintf("blue", 1, "<ack %d> %d %d %d %s\n", i, ack.pid_sender, ack.pid_receiver, ack.message_id, buff);
             }
         }
         ackManagerRoutine();

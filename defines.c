@@ -4,6 +4,8 @@
 
 #include "stdio.h"
 #include "time.h"
+#include "string.h"
+#include "stdarg.h"
 
 #include "defines.h"
 #include "err_exit.h"
@@ -78,4 +80,36 @@ int contAckByMessageId(Acknowledgment *shm_ptr_acklist, int message_id)
             result++;
     }
     return result;
+}
+
+// -- FUNZIONI PRINT PERSONALIZZATE
+void coloredPrintf (char *color, int bold, const char * format, ... )
+{
+    setPrintColor(color, bold);
+
+    va_list argptr;
+    va_start(argptr, format);
+    vfprintf(stdout, format, argptr);
+    va_end(argptr);
+
+    setPrintColor("default", 0);
+}
+
+void setPrintColor(char *color, int bold) {
+    if(strcmp("red", color) == 0)
+        printf("\033[%d;31m", bold);
+    else if(strcmp("green", color) == 0)
+        printf("\033[%d;32m", bold);
+    else if(strcmp("yellow", color) == 0)
+        printf("\033[%d;33m", bold);
+    else if(strcmp("blue", color) == 0)
+        printf("\033[%d;34m", bold);
+    else if(strcmp("magenta", color) == 0)
+        printf("\033[%d;35m", bold);
+    else if(strcmp("cyan", color) == 0)
+        printf("\033[%d;36m", bold);
+    else if(strcmp("default", color) == 0)
+        printf("\033[0;0m");
+    else
+        printf("\033[0;0m");
 }

@@ -39,7 +39,7 @@ int msg_queue_key;
 
 void freeResources()
 {        
-    printf("<server> Free resources...\n");
+    coloredPrintf("red", 0, "<server> Free resources...\n");
     // chiusura di tutti i meccanismi di comunicazione/sincronizzazione tra processi
     removeSemaphoreSet(semid);
     removeSharedMemory(shmid_board);
@@ -50,7 +50,7 @@ void freeResources()
 void sigHandler(int sig)
 {
     if (sig == SIGTERM || sig == SIGINT) {
-        printf("<server> Close processes and exit...\n");
+        coloredPrintf("red", 0, "<server> Close processes and exit...\n");
         // terminazione processo server e figli
         kill(-getpid(), sig);
         
@@ -64,7 +64,7 @@ void sigHandler(int sig)
 
 void changeSignalHandler()
 {
-    printf("<server> Changing signal handler...\n");
+    coloredPrintf("cyan", 1, "<server> Changing signal handler...\n");
     sigset_t signals_set;
     if (sigfillset(&signals_set) == -1)
         ErrExit("<server> sigfillset failed");
@@ -90,7 +90,7 @@ void initDevices(int n_devices, const char *path_to_position_file)
     for (int i = 0; i < n_devices; i++) {
         pid = fork();
         if (pid == -1) {
-            printf("device %d not created!", i);
+            coloredPrintf("red", 1, "device %d not created!", i);
             exit(0);
         } else if (pid == 0) {
             execDevice(i, semid, shmid_board, shmid_acklist, shmid_deviceslist, path_to_position_file);
@@ -102,7 +102,8 @@ void initAckManager()
 {
     pid_t pid = fork();
     if (pid == -1) {
-        ErrExit("ack_manager not created!");
+        coloredPrintf("red", 1, "ack_manager not created!");
+        exit(0);
     } else if (pid == 0) {
         execAckManager(shmid_acklist, msg_queue_key, semid);
     }
@@ -111,23 +112,23 @@ void initAckManager()
 int main(int argc, char *argv[])
 {
     if (argc != 3) {
-        printf("Usage: %s msg_queue_key file_posizioni\n", argv[0]);
+        coloredPrintf("red", 1, "Usage: %s msg_queue_key file_posizioni\n", argv[0]);
         return 0;
     }
 
     // Legge e controlla la chiave della message queue
     msg_queue_key = atoi(argv[1]);
     if (msg_queue_key <= 0) {
-        printf("The message queue key must be greater than zero!\n");
+        coloredPrintf("red", 1, "The message queue key must be greater than zero!\n");
         exit(1);
     }
 
     changeSignalHandler();
 
-    printf("Initialization semaphores...\n");
+    coloredPrintf("cyan", 1, "<server> Initialization semaphores...\n");
     semid = initSemaphoreSet(N_DEVICES+3, N_DEVICES);
 
-    printf("Initialization shared memory...\n");
+    coloredPrintf("cyan", 1, "<server> Initialization shared memory...\n");
     // Crea i segmenti di memoria condivisa
     shmid_board = allocSharedMemory(IPC_PRIVATE, sizeof(pid_t) * BOARD_ROWS * BOARD_COLS);
     shmid_acklist = allocSharedMemory(IPC_PRIVATE, sizeof(Acknowledgment) * SIZE_ACK_LIST);
@@ -138,11 +139,12 @@ int main(int argc, char *argv[])
     
     int i = 0;
     while (1) {
-        printf("\n# Step %d: device positions ########################\n", i);
-        // sblocca la board
-        semOp(semid, N_DEVICES, -1);
         sleep(2);
         i++;
+        // sblocca la board
+        semOp(semid, N_DEVICES, -1);
+        coloredPrintf("yellow", 0, "\n# Step %d: device positions ########################\n", i);
+
     }
 
     return 0;
