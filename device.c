@@ -20,12 +20,12 @@ L'ultimo device che riceve il messaggio, lo cancella.
 #include "string.h"
 #include "time.h"
 
-#include "inc/defines.h"
-#include "inc/err_exit.h"
-#include "inc/semaphore.h"
-#include "inc/shared_memory.h"
-#include "inc/fifo.h"
-#include "inc/device.h"
+#include "defines.h"
+#include "err_exit.h"
+#include "semaphore.h"
+#include "shared_memory.h"
+#include "fifo.h"
+#include "device.h"
 
 // memoria condivisa
 pid_t *shm_ptr_board;

@@ -5,8 +5,8 @@
 #include "stdio.h"
 #include "fcntl.h"
 
-#include "../inc/err_exit.h"
-#include "../inc/semaphore.h"
+#include "err_exit.h"
+#include "semaphore.h"
 
 void semOp(int semid, unsigned short sem_num, short sem_op)
 {

@@ -1,7 +1,7 @@
 /// @file err_exit.c
 /// @brief Contiene l'implementazione della funzione di stampa degli errori.
 
-#include "../inc/err_exit.h"
+#include "err_exit.h"
 
 #include <stdlib.h>
 #include <stdarg.h>

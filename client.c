@@ -28,10 +28,10 @@ Una volta generato il file di output il client termina.
 #include "signal.h"
 
 // INCLUDE PROGETTO
-#include "inc/defines.h"
-#include "inc/err_exit.h"
-#include "inc/fifo.h"
-#include "inc/client.h"
+#include "defines.h"
+#include "err_exit.h"
+#include "fifo.h"
+#include "client.h"
 
 const char *base_path_to_device_fifo = "/tmp/dev_fifo.";
 

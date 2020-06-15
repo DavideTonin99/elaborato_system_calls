@@ -16,11 +16,11 @@ della memoria condivisa.
 #include "sys/msg.h"
 
 // INCLUDE PROGETTO
-#include "inc/defines.h"
-#include "inc/err_exit.h"
-#include "inc/shared_memory.h"
-#include "inc/semaphore.h"
-#include "inc/ack_manager.h"
+#include "defines.h"
+#include "err_exit.h"
+#include "shared_memory.h"
+#include "semaphore.h"
+#include "ack_manager.h"
 
 Acknowledgment *shm_ptr_acklist;
 int msq_id;

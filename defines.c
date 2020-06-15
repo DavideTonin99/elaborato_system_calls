@@ -5,8 +5,8 @@
 #include "stdio.h"
 #include "time.h"
 
-#include "inc/defines.h"
-#include "inc/err_exit.h"
+#include "defines.h"
+#include "err_exit.h"
 
 void printDebugMessage(Message *msg) 
 {
