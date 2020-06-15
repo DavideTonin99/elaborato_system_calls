@@ -38,7 +38,7 @@ const char *base_path_to_device_fifo = "/tmp/dev_fifo.";
 void sigHandler(int sig)
 {
     if (sig == SIGUSR1) {
-        printf("MESSAGE ID NON UNIVOCO !!!\n");
+        coloredPrintf("red", 1, "MESSAGE ID NON UNIVOCO !!!\n");
         exit(1);
     }
 }
@@ -55,8 +55,8 @@ int readInt(const char *buffer)
     errno = 0;
     long int res = strtol(buffer, &endptr, 10);
 
-    if (errno != 0 || *endptr != '\n' || res < 0) {
-        printf("<read int> invalid input argument\n");
+    if (errno != 0 || *endptr != '\n' || res < 1) {
+        coloredPrintf("red", 1, "<read int> invalid input argument\n");
         exit(1);
     }
 
@@ -69,8 +69,8 @@ double readDouble(const char *buffer)
     errno = 0;
     double res = strtod(buffer, &endptr);
 
-    if (errno != 0 || *endptr != '\n' || res < 0) {
-        printf("<read double> invalid input argument\n");
+    if (errno != 0 || *endptr != '\n' || res < 1) {
+        coloredPrintf("red", 1, "<read double> invalid input argument\n");
         exit(1);
     }
     
@@ -85,7 +85,7 @@ void sendMessage(Message *msg)
     
     int fd_device_fifo = openFIFO(path_to_device_fifo, O_WRONLY);
     
-    printf("Sending the message %d to device %d...\n", msg->message_id, msg->pid_receiver);
+    coloredPrintf("green", 1, "Sending the message %d to device %d...\n", msg->message_id, msg->pid_receiver);
     writeFIFO(fd_device_fifo, msg);
     closeFIFO(fd_device_fifo);
 }
@@ -127,59 +127,58 @@ void writeOutAck(Message *msg, Response response)
 int main(int argc, char *argv[])
 {
     // Controlla gli argomenti da linea di comando
-    if (argc < 2 || argc > 3) {
-        printf("Usage: %s msg_queue_key [input_filename]\n", argv[0]);
+    if (argc != 2 && argc != 6) {
+        coloredPrintf("red", 1, "Usage: %s msg_queue_key \nor\n%s msg_queue_key pid_receiver message_id message max_distance\n", argv[0], argv[0]);
         exit(1);
     }
 
     changeSignalHandler();
 
-    int fd_input = 1;
-    if (argc == 3) {
-        // se c'è il file in input, lo usa come standard input
-        close(STDIN_FILENO);
-        fd_input = open(argv[2], O_RDONLY);
-        if (fd_input == -1)
-            ErrExit("open input file failed");
-    }
-
     // Legge e controlla la chiave della message queue
     int msg_queue_key = atoi(argv[1]);
     if (msg_queue_key <= 0) {
-        printf("The message queue key must be greater than zero!\n");
+        coloredPrintf("red", 1, "The message queue key must be greater than zero!\n");
         exit(1);
     }
 
     // Crea un messaggio
     Message msg;
 
-    char buffer[10];
-    size_t len;
+    if (argc == 6) {
+        msg.pid_receiver = atoi(argv[2]);
+        msg.message_id = atoi(argv[3]);
+        
+        memcpy(msg.message, argv[4], strlen(argv[4]));
+        size_t len = strlen(msg.message);
+        msg.message[len - 1] = '\0';
 
-    // Legge il pid del device ricevente
-    if (!fd_input)
-        printf("Lettura input messaggio dal file %s ...\n", argv[2]);
+        msg.max_distance = atof(argv[5]);
 
-    if (fd_input)
-        printf("Insert pid receiver device: ");
-    fgets(buffer, sizeof(buffer), stdin);
-    msg.pid_receiver = readInt(buffer);
+        if(msg.pid_receiver < 1 || msg.message_id < 0 || msg.max_distance < 1){
+            coloredPrintf("red", 0, "<client %d> script input < 0\n", getpid());
+            exit(1);
+        }
+    } else {
+        char buffer[10];
+        size_t len;
 
-    if (fd_input)
-        printf("Insert message id: ");
-    fgets(buffer, sizeof(buffer), stdin);
-    msg.message_id = readInt(buffer);
+        coloredPrintf("green", 1, "Insert pid receiver device: ");
+        fgets(buffer, sizeof(buffer), stdin);
+        msg.pid_receiver = readInt(buffer);
 
-    if (fd_input)
-        printf("Insert message: ");
-    fgets(msg.message, sizeof(msg.message), stdin);
-    len = strlen(msg.message);
-    msg.message[len - 1] = '\0';
+        coloredPrintf("green", 1, "Insert message id: ");
+        fgets(buffer, sizeof(buffer), stdin);
+        msg.message_id = readInt(buffer);
 
-    if (fd_input)
-        printf("Insert max distance: ");
-    fgets(buffer, sizeof(buffer), stdin);
-    msg.max_distance = readDouble(buffer);
+        coloredPrintf("green", 1, "Insert message: ");
+        fgets(msg.message, sizeof(msg.message), stdin);
+        len = strlen(msg.message);
+        msg.message[len - 1] = '\0';
+
+        coloredPrintf("green", 1, "Insert max distance: ");
+        fgets(buffer, sizeof(buffer), stdin);
+        msg.max_distance = readDouble(buffer);
+    }
 
     // Imposta il pid del processo sender
     msg.pid_sender = getpid();
@@ -200,10 +199,6 @@ int main(int argc, char *argv[])
         ErrExit("msgrcv failed");
 
     writeOutAck(&msg, response);
-
-    if (!fd_input)
-        if (close(fd_input))
-            ErrExit("close file input failed");
 
     return 0;
 }

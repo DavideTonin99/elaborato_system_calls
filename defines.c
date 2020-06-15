@@ -13,16 +13,16 @@
 void printDebugMessage(Message *msg) 
 {
     if (msg) {
-        printf("\n------------------\n");
-        printf("Debug Messaggio: \n");
-        printf("pid_sender: %d\n", msg->pid_sender);
-        printf("pid_receiver: %d\n", msg->pid_receiver);
-        printf("message_id: %d\n", msg->message_id);
-        printf("message: %s\n", msg->message);
-        printf("max_distance: %lf\n", msg->max_distance);
-        printf("------------------\n");
+        coloredPrintf("yellow", 0, "\n------------------\n");
+        coloredPrintf("yellow", 0, "Debug Messaggio: \n");
+        coloredPrintf("default", 0, "pid_sender: %d\n", msg->pid_sender);
+        coloredPrintf("default", 0, "pid_receiver: %d\n", msg->pid_receiver);
+        coloredPrintf("default", 0, "message_id: %d\n", msg->message_id);
+        coloredPrintf("default", 0, "message: %s\n", msg->message);
+        coloredPrintf("default", 0, "max_distance: %lf\n", msg->max_distance);
+        coloredPrintf("yellow", 0, "------------------\n");
     } else {
-        printf("Messaggio non valido!\n");
+        coloredPrintf("red", 1, "Messaggio non valido!\n");
     }
 }
 
