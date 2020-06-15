@@ -186,8 +186,12 @@ void readMessages(Message *messages_buffer, int *n_messages, int semid)
                     }
                 }
                 addAck(shm_ptr_acklist, &msg);
-                messages_buffer[*n_messages] = msg;
-                (*n_messages)++;
+                // se non è l'ultimo device che riceve il messaggio, lo salva per inviarlo al prossimo giro
+                // altrimenti inserisce solo l'ack
+                if (contAckByMessageId(shm_ptr_acklist, msg.message_id) < N_DEVICES) {
+                    messages_buffer[*n_messages] = msg;
+                    (*n_messages)++;
+                }
 
                 semOp(semid, (unsigned short)SEMNUM_ACKLIST, 1); // sblocca la ack list                    
             }
