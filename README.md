@@ -1,13 +1,15 @@
 # PROGETTO SYSTEM CALLS
 
 ## SCRIPT
-Nella cartella ``script`` sono presenti tre script bash:
+> Nella cartella ``script`` sono presenti tre script bash:
 
 #### generate_clients.sh
 
 ``Parametri``: 
+```bash
+msq_queue_key n_clients pid_receiver message_id message max_distance delay
+```
 
-    msq_queue_key n_clients pid_receiver message_id message max_distance delay
 ``Descrizione``
 
 - msq_queue_key (int): la msq_queue_key su cui comunicano il client e ackManager
@@ -17,7 +19,7 @@ Nella cartella ``script`` sono presenti tre script bash:
 - message (string): il messaggio che il client manda al device se vengono avviati più client, ad ogni messaggio viene aggiunto in append il message_id
 - max_distance (double): massima distanza a cui il device può inviare messaggi
 
-``NB``: se il messaggio inserito ha spazi in mezzo, mettere " all inizio e alla fine
+> ``NB``: se il messaggio inserito ha spazi in mezzo, mettere " all inizio e alla fine
 
 ---
 
@@ -30,12 +32,29 @@ Nella cartella ``script`` sono presenti tre script bash:
 #### generate_pos_file.sh
 
 ``Parametri``:
-
-    n_devices n_posizioni
+```bash
+n_devices n_righe board_rows board_cols
+```
 
 ``Descrizione``:
     
-    genera il file posizioni con posizioni random
+    genera il file posizioni con posizioni random, per n_devices, n_righe
+    su una board di altezza board_rows e larghezza board_cols
+
+---
+
+### COMANDI UTILI
+
+Per generare un file posizioni (dalla cartella principale del progetto):
+```bash
+source script/generate_pos_file.sh 5 200 10 10
+```
+
+Per generare 10 client (dalla cartella principale del progetto):
+
+```bash
+source script/generate_clients.sh 100 10 1234 1 hola 2 1
+```
 
 ---
 
