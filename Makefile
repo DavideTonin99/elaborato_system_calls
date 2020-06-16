@@ -1,17 +1,17 @@
-CFLAGS   = -Wall -std=gnu99
-INCLUDES = -I./inc
-LIBS     = -lm
-OBJDIR   = obj
-INCDIR = inc
+CFLAGS   := -Wall -std=gnu99
+INCLUDES := -I./inc
+LIBS     := -lm
+OBJDIR   := obj
+INCDIR 	 := inc
 
 # keep track of these files
-KEEP_TRACK = Makefile
+KEEP_TRACK := Makefile
 
-SERVER_SRCS = server.c ack_manager.c device.c defines.c utils/err_exit.c utils/shared_memory.c utils/semaphore.c utils/fifo.c
-SERVER_OBJS = $(addprefix $(OBJDIR)/, $(SERVER_SRCS:.c=.o))
+SERVER_SRCS := server.c ack_manager.c device.c defines.c utils/err_exit.c utils/shared_memory.c utils/semaphore.c utils/fifo.c
+SERVER_OBJS := $(addprefix $(OBJDIR)/, $(SERVER_SRCS:.c=.o))
 
-CLIENT_SRCS = client.c defines.c utils/fifo.c utils/err_exit.c
-CLIENT_OBJS = $(addprefix $(OBJDIR)/, $(CLIENT_SRCS:.c=.o))
+CLIENT_SRCS := client.c defines.c utils/fifo.c utils/err_exit.c
+CLIENT_OBJS := $(addprefix $(OBJDIR)/, $(CLIENT_SRCS:.c=.o))
 
 # must be first rule
 default: all
@@ -24,18 +24,18 @@ $(OBJDIR):
 	@echo "(missing header $@)"
 
 $(OBJDIR)/%.o: %.c $(INCDIR)/%.h $(KEEP_TRACK)
-	$(CC) $(CFLAGS) $(INCLUDES) $(LIBS) -c -o $@ $<
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $< $(LIBS)
 
-$(OBJDIR)/utils/%.o: utils/%.c $(INCDIR)/%.h
-	$(CC) $(CFLAGS) $(INCLUDES) $(LIBS) -c -o $@ $<
+$(OBJDIR)/utils/%.o: utils/%.c $(INCDIR)/%.h $(KEEP_TRACK)
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $< $(LIBS)
 
 server: $(SERVER_OBJS)
-	$(CC) $(CFLAGS) $(INCLUDES) $(LIBS) -o $@ $^
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LIBS)
 	@echo "Server compiled."
 	@echo
 
 client: $(CLIENT_OBJS)
-	$(CC) $(CFLAGS) $(INCLUDES) $(LIBS) -o $@ $^
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LIBS)
 	@echo "Client compiled."
 	@echo
 
