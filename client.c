@@ -107,7 +107,10 @@ void writeOutAck(Message *msg, Response response)
     if (write(fd_out, header, strlen(header)) == -1)
         ErrExit("write failed");
 
-    char buffer[100];
+    char buffer[100] = "Lista acknowledgements:\n";
+    if (write(fd_out, buffer, strlen(buffer)) == -1)
+        ErrExit("write failed");
+
     for (int i = 0; i < N_DEVICES; i++) {
         memset(buffer, 0, sizeof(buffer));   
         // TODO scrittura su file
@@ -150,7 +153,7 @@ int main(int argc, char *argv[])
         
         memcpy(msg.message, argv[4], strlen(argv[4]));
         size_t len = strlen(msg.message);
-        msg.message[len - 1] = '\0';
+        msg.message[len] = '\0';
 
         msg.max_distance = atof(argv[5]);
 

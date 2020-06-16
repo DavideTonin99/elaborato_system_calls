@@ -6,7 +6,7 @@ SCRIPT_NAME=$(basename ${BASH_SOURCE[0]})
 
 if [ "$#" != 7 ]; then
     echo -e "\e[31mERROR: $SCRIPT_NAME takes 6 params: msq_queue_key n_clients pid_receiver message_id message max_distance delay\e[0m"
-    exit
+    return
 fi
 
 MSG_QUEUE_KEY=${args[0]}

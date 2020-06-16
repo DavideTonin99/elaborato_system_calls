@@ -254,19 +254,24 @@ void moveDevice(Position *position, char *next_line)
     readNextLine(next_line);
     getNextPosition(next_line, position);
 
-    int next_position_index = position->row * BOARD_COLS + position->col;
-
-    // se la nuova posizione non è occupata, sposta il device
-    if (shm_ptr_board[next_position_index] == 0) {
-        // prima libera la precedente zona occupata
-        shm_ptr_board[old_position_index] = 0;
-        // occupa la nuova zona
-        shm_ptr_board[next_position_index] = getpid();
-    } else {
-        // altrimenti il device resta fermo, e ripristina la posizione
+    if (!(position->row < BOARD_ROWS && position->col < BOARD_COLS)) {
         position->row = old_position_index / BOARD_COLS;
         position->col = old_position_index % BOARD_COLS;
-    }
+    } else {
+        int next_position_index = position->row * BOARD_COLS + position->col;
+
+        // se la nuova posizione non è occupata, sposta il device
+        if (shm_ptr_board[next_position_index] == 0) {
+            // prima libera la precedente zona occupata
+            shm_ptr_board[old_position_index] = 0;
+            // occupa la nuova zona
+            shm_ptr_board[next_position_index] = getpid();
+        } else {
+            // altrimenti il device resta fermo, e ripristina la posizione
+            position->row = old_position_index / BOARD_COLS;
+            position->col = old_position_index % BOARD_COLS;
+        }
+    }    
 }
 
 void printDebugDevice(Position position, int n_messages, Message *messages_buffer) 

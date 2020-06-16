@@ -6,7 +6,7 @@ SCRIPT_NAME=$(basename ${BASH_SOURCE[0]})
 
 if [ "$#" != 4 ]; then
     echo -e "\e[31mERROR: $SCRIPT_NAME takes 4 params: n_devices n_righe board_rows board_cols\e[0m"
-    exit
+    return
 fi
 
 N_DEVICES=${args[0]}
