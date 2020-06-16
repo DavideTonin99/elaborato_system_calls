@@ -144,7 +144,6 @@ int main(int argc, char *argv[])
         // sblocca la board
         semOp(semid, N_DEVICES, -1);
         coloredPrintf("yellow", 0, "\n# Step %d: device positions ########################\n", i);
-
     }
 
     return 0;

@@ -6,10 +6,11 @@
 #include "shared_memory.h"
 
 #include "sys/shm.h"
+#include "fcntl.h"
 
 int allocSharedMemory(key_t shm_key, size_t size)
 {
-    int shmid = shmget(shm_key, size, IPC_CREAT);
+    int shmid = shmget(shm_key, size, IPC_CREAT | S_IRUSR | S_IWUSR);
     if (shmid == -1)
         ErrExit("shmget failed");
     return shmid;
