@@ -165,7 +165,7 @@ void readMessages(Message *messages_buffer, int *n_messages, int semid)
         int available = checkAckAvailable(shm_ptr_acklist);
         semOp(semid, (unsigned short)SEMNUM_ACKLIST, 1); // sblocca la ack list
 
-        if (available) {
+        if (available && *n_messages < MSG_BUFFER_SIZE) {
             bR = read(fd_device_fifo, &msg, sizeof(Message));
             if (bR == -1) {
                 ErrExit("<device> read fifo failed");

@@ -1,7 +1,7 @@
 #pragma once
 
 #define MSG_BUFFER_SIZE 10
-#define ROW_BUFFER_SIZE 50
+#define ROW_BUFFER_SIZE 200
 
 // contiene la posizione del device
 typedef struct {

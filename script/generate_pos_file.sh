@@ -14,7 +14,7 @@ N_RIGHE=${args[1]}
 BOARD_ROWS=${args[2]}
 BOARD_COLS=${args[3]}
 
-echo "<$SCRIPT_NAME> Creating position file...\n"
+echo "<$SCRIPT_NAME> Creating position file..."
 
 rm -f input/file_posizioni.txt
 
@@ -25,7 +25,7 @@ do
     do
         rand_row=$(((RANDOM % ${BOARD_ROWS})))
         rand_col=$(((RANDOM % ${BOARD_COLS})))
-        pos+="${rand_row}|${rand_col}|"
+        pos+="${rand_row},${rand_col}|"
     done
     echo "${pos}" >> input/file_posizioni.txt
 
