@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
     changeSignalHandler();
 
     coloredPrintf("cyan", 1, "<server> Initialization semaphores...\n");
-    semid = initSemaphoreSet(N_DEVICES+3, N_DEVICES);
+    semid = initSemaphoreSet();
 
     coloredPrintf("cyan", 1, "<server> Initialization shared memory...\n");
     // Crea i segmenti di memoria condivisa

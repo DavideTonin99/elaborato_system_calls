@@ -107,9 +107,12 @@ void writeOutAck(Message *msg, Response response)
     if (write(fd_out, header, strlen(header)) == -1)
         ErrExit("write failed");
 
+    coloredPrintf("green", 0, "%s", header);
+
     char buffer[100] = "Lista acknowledgements:\n";
     if (write(fd_out, buffer, strlen(buffer)) == -1)
         ErrExit("write failed");
+    coloredPrintf("yellow", 1, "%s", buffer);
 
     for (int i = 0; i < N_DEVICES; i++) {
         memset(buffer, 0, sizeof(buffer));   

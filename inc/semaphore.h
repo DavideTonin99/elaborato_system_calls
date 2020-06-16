@@ -22,11 +22,9 @@ void semOp(int semid, unsigned short sem_num, short sem_op);
 
 /**
  * initSemaphoreSet: crea e inizializza un set di semafori
- * @param length: numero di semafori
- * @param devices: numero di device
  * @return semid: identificatore del set di semafori creato
  */
-int initSemaphoreSet(int length, int devices);
+int initSemaphoreSet();
 
 /**
  * removeSemaphoreSet: rimuove il set di semafori indicato da semid

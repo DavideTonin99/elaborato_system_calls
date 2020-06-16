@@ -7,6 +7,7 @@
 
 #include "err_exit.h"
 #include "semaphore.h"
+#include "defines.h"
 
 void semOp(int semid, unsigned short sem_num, short sem_op)
 {
@@ -20,10 +21,10 @@ void semOp(int semid, unsigned short sem_num, short sem_op)
         ErrExit("semop failed");
 }
 
-int initSemaphoreSet(int length, int devices) 
+int initSemaphoreSet() 
 {
     // Crea un set di 'length' semafori
-    int semid = semget(IPC_PRIVATE, length, S_IRUSR | S_IWUSR);
+    int semid = semget(IPC_PRIVATE, N_DEVICES+3, S_IRUSR | S_IWUSR);
     if (semid == -1)
         ErrExit("semget failed");
 
@@ -32,17 +33,12 @@ int initSemaphoreSet(int length, int devices)
     // Il semaforo successivo all'ultimo device gestisce l'accesso alla scacchiera
     // Il penultimo semaforo gestisce l'accesso alla lista di acknowledgments
     // L'ultimo semaforo gestisce l'accesso alla lista dei device
-    unsigned short sem_init_values[length];
-    int i = 0;
-    sem_init_values[i] = 1; // il primo device a 1
-
-    // tutti gli altri device a 0
-    for (i = 1; i < devices; i++)
-        sem_init_values[i] = 0;
+    unsigned short sem_init_values[N_DEVICES+3] = {0};
+    sem_init_values[0] = 1; // il primo device a 1
     // board: 1 -> bloccato, 0 -> sbloccato
-    sem_init_values[i] = 1;
-    sem_init_values[i+1] = 1;
-    sem_init_values[i+2] = 1;
+    sem_init_values[SEMNUM_BOARD] = 1;
+    sem_init_values[SEMNUM_ACKLIST] = 1;
+    sem_init_values[SEMNUM_DEVICESLIST] = 1;
     union semun arg;
     arg.array = sem_init_values;
 
