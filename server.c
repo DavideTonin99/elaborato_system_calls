@@ -49,17 +49,16 @@ void freeResources()
 
 void sigHandler(int sig)
 {
-    if (sig == SIGTERM || sig == SIGINT) {
-        coloredPrintf("red", 0, "<server> Close processes and exit...\n");
-        // terminazione processo server e figli
-        kill(-getpid(), sig);
-        
-        // attende che terminano tutti figli
-        while (wait(NULL) != -1);
+    coloredPrintf("red", 0, "<server> Close processes and exit...\n");
+    // terminazione processo server e figli
+    if (kill(-getpid(), SIGTERM) == -1)
+        ErrExit("kill failed");
 
-        freeResources();
-        exit(0);
-    }
+    // attende che terminano tutti figli
+    while (wait(NULL) != -1);
+
+    freeResources();
+    exit(0);
 }
 
 void changeSignalHandler()
@@ -71,16 +70,12 @@ void changeSignalHandler()
 
     // rimuove SIGTERM
     sigdelset(&signals_set, SIGTERM);
-    sigdelset(&signals_set, SIGINT); // per DEBUG
 
     // blocca tutti i segnali, tranne SIGTERM che è stato rimosso
     if (sigprocmask(SIG_SETMASK, &signals_set, NULL) == -1)
         ErrExit("<server> sigprocmask failed");
 
     if (signal(SIGTERM, sigHandler) == SIG_ERR)
-        ErrExit("<server> change signal handler failed");
-    // DEBUG
-    if (signal(SIGINT, sigHandler) == SIG_ERR)
         ErrExit("<server> change signal handler failed");
 }
 

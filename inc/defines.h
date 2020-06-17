@@ -14,7 +14,7 @@
 #define BOARD_COLS 10
 
 // --grandezza lista acknowledgemnt
-#define SIZE_ACK_LIST 100
+#define SIZE_ACK_LIST 10
 
 // --semafori
 #define SEMNUM_BOARD N_DEVICES

@@ -34,11 +34,9 @@ void ackManagerFreeResources()
 
 void ackManagerSigHandler(int sig)
 {
-    if (sig == SIGTERM || sig == SIGINT) {
-        coloredPrintf("red", 0, "<ack manager pid: %d>remove resources and exit...\n", getpid());
-        ackManagerFreeResources();
-        exit(0);
-    }
+    coloredPrintf("red", 0, "<ack manager pid: %d>remove resources and exit...    segnale %d\n", getpid(), sig);
+    ackManagerFreeResources();
+    exit(0);
 }
 
 void changeAckManagerSignalHandler() 
@@ -49,7 +47,6 @@ void changeAckManagerSignalHandler()
 
     // rimuove SIGTERM
     sigdelset(&signals_set, SIGTERM);
-    sigdelset(&signals_set, SIGINT); // per DEBUG
 
     // blocca tutti i segnali, tranne SIGTERM che è stato rimosso
     if (sigprocmask(SIG_SETMASK, &signals_set, NULL) == -1)
@@ -57,20 +54,27 @@ void changeAckManagerSignalHandler()
 
     if (signal(SIGTERM, ackManagerSigHandler) == SIG_ERR)
         ErrExit("<ack manager> change signal handler failed");
-
-    // DEBUG
-    if (signal(SIGINT, ackManagerSigHandler) == SIG_ERR)
-        ErrExit("<ack manager> change signal handler failed");
 }
 
 void ackManagerRoutine() 
 {
+    int cont_empty_ack = 0;
     for (int i = 0; i < SIZE_ACK_LIST; i++) {
         if (shm_ptr_acklist[i].message_id != 0) {
             if (contAckByMessageId(shm_ptr_acklist, shm_ptr_acklist[i].message_id) == N_DEVICES) {
                 sendResponseToClient(shm_ptr_acklist[i].message_id);
+                cont_empty_ack += N_DEVICES;
             }
+        } else {
+            cont_empty_ack++;
         }
+    }
+
+    // se non ci sono più posti liberi nella ack list, invia un segnale SIGTERM al server
+    // altrimenti il programma continuerebbe all'infinito
+    if (cont_empty_ack == 0) {
+        coloredPrintf("red", 1, "ACK LIST PIENA!!\n");
+        kill(getppid(), SIGTERM);
     }
 }
 
