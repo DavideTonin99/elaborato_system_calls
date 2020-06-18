@@ -17,9 +17,9 @@ void createFIFO(const char *path, mode_t mode)
         ErrExit("mkfifo failed");
 }
 
-int openFIFO(const char *path, mode_t mode) 
+int openFIFO(const char *path, int flags) 
 {
-    int fd = open(path, mode);
+    int fd = open(path, flags);
     if (fd == -1)
         ErrExit("open fifo failed");
     return fd;
