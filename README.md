@@ -67,7 +67,7 @@ Per generare un file posizioni (dalla cartella principale del progetto):
 source script/generate_pos_file.sh 5 200 10 10
 ```
 
-``NOTA``: Per lanciare un test
+``NOTA``: Per lanciare un test (dalla cartella principale del progetto):
 
 ```bash
 source script/test.sh 100 1
