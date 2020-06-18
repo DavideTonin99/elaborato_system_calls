@@ -1,14 +1,16 @@
 # PROGETTO SYSTEM CALLS
 
-## ACK LIST
+### ACK LIST
 
-    Quando l'ack list è piena, i device non riescono più a scambiarsi i messaggi.
-    Quindi l'ack manager invia un segnale al server, che termina tutto.
+Quando l'ack list è piena, i device non riescono più a scambiarsi i messaggi.
+Quindi l'ack manager invia un segnale al server, che termina tutto.
 
-## GESTIONE MESSAGE ID UNIVOCO
+### GESTIONE MESSAGE ID UNIVOCO
 
-    Ogni device che riceve un messaggio, controlla se chi l'ha inviato è un altro device o un client, scorrendo la lista dei device salvata in una zona di shared memory.
-    Se il *pid sender* è un client, ma il message id è già presente nella lista di acknowledgment, invia un segnale SIGUSR1 al client, che termina con errore
+Ogni device che riceve un messaggio, controlla se chi l'ha inviato è un altro device o un client, scorrendo la lista dei device salvata in una zona di shared memory.
+Se il *pid sender* è un client, ma il message id è già presente nella lista di acknowledgment, invia un segnale SIGUSR1 al client, che termina con errore
+
+---
 
 ## SCRIPT
 > Nella cartella ``script`` sono presenti i seguenti script bash:
