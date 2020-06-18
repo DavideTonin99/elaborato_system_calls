@@ -1,7 +1,17 @@
 # PROGETTO SYSTEM CALLS
 
+## ACK LIST
+
+    Quando l'ack list è piena, i device non riescono più a scambiarsi i messaggi.
+    Quindi l'ack manager invia un segnale al server, che termina tutto.
+
+## GESTIONE MESSAGE ID UNIVOCO
+
+    Ogni device che riceve un messaggio, controlla se chi l'ha inviato è un altro device o un client, scorrendo la lista dei device salvata in una zona di shared memory.
+    Se il *pid sender* è un client, ma il message id è già presente nella lista di acknowledgment, invia un segnale SIGUSR1 al client, che termina con errore
+
 ## SCRIPT
-> Nella cartella ``script`` sono presenti tre script bash:
+> Nella cartella ``script`` sono presenti i seguenti script bash:
 
 #### generate_clients.sh
 
@@ -21,11 +31,18 @@ msq_queue_key n_clients pid_receiver message_id message max_distance delay
 
 > ``NB``: se il messaggio inserito ha spazi in mezzo, mettere " all inizio e alla fine
 
----
+#### test.sh
 
-#### remove_ipcs.sh
+``Parametri``:
+```bash
+msg_queue_key delay
+```
 
-    Rimuove tutte le ipc generate dall'utente
+``Descrizione``
+
+Prende in input la chiave della message queue e il delay per la generazione dei client.
+Per eseguire il test, modificare il file inserendo i pid dei device dopo aver eseguito il server. Inserire anche il numero di messaggi da inviare a ogni device, i messaggi da inviare, i message id di partenza  e la massima distanza per ogni set di messaggi.
+
 
 ---
 
@@ -43,11 +60,17 @@ n_devices n_righe board_rows board_cols
 
 ---
 
-### COMANDI UTILI
+### COMANDI UTILI PER TEST
 
 Per generare un file posizioni (dalla cartella principale del progetto):
 ```bash
 source script/generate_pos_file.sh 5 200 10 10
+```
+
+``NOTA``: Per lanciare un test
+
+```bash
+source script/test.sh 100 1
 ```
 
 Per generare 10 client (dalla cartella principale del progetto):

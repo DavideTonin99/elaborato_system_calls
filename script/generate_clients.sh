@@ -17,7 +17,7 @@ MESSAGE=${args[4]}
 MAX_DISTANCE=${args[5]} 
 DELAY=${args[6]}
 
-echo "<$SCRIPT_NAME> starting $N_CLIENTS time(s) ./client $MSG_QUEUE_KEY $PID_RECEIVER $MESSAGE_ID $MESSAGE $MAX_DISTANCE" 
+echo "<$SCRIPT_NAME> starting $N_CLIENTS ./client $MSG_QUEUE_KEY $PID_RECEIVER $MESSAGE_ID $MESSAGE $MAX_DISTANCE" 
 
 for (( c = 0; c < N_CLIENTS; c++ ))
 do    

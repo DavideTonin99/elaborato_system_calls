@@ -38,7 +38,7 @@ const char *base_path_to_device_fifo = "/tmp/dev_fifo.";
 void sigHandler(int sig)
 {
     if (sig == SIGUSR1) {
-        coloredPrintf("red", 1, "MESSAGE ID NON UNIVOCO !!!\n");
+        coloredPrintf("red", 1, "Client %d ERROR: MESSAGE ID NON UNIVOCO !!!\n", getpid());
         exit(1);
     }
 }
@@ -102,17 +102,14 @@ void writeOutAck(Message *msg, Response response)
     if (fd_out == -1)
         ErrExit("open file out failed");
 
-    char header[sizeof(msg->message) + 30];
+    char header[strlen(msg->message) + 30];
     sprintf(header, "%s %d: %s\n", "Messaggio", msg->message_id, msg->message);
     if (write(fd_out, header, strlen(header)) == -1)
         ErrExit("write failed");
 
-    coloredPrintf("green", 0, "%s", header);
-
     char buffer[100] = "Lista acknowledgements:\n";
     if (write(fd_out, buffer, strlen(buffer)) == -1)
         ErrExit("write failed");
-    coloredPrintf("yellow", 1, "%s", buffer);
 
     for (int i = 0; i < N_DEVICES; i++) {
         memset(buffer, 0, sizeof(buffer));   
@@ -121,7 +118,6 @@ void writeOutAck(Message *msg, Response response)
         strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&response.ack[i].timestamp));
         sprintf(buffer, "%d, %d, %s\n", response.ack[i].pid_sender, response.ack[i].pid_receiver, timestamp);
 
-        printf("%s", buffer);
         if (write(fd_out, buffer, strlen(buffer)) == -1)
             ErrExit("write failed");
     }
@@ -205,6 +201,7 @@ int main(int argc, char *argv[])
         ErrExit("msgrcv failed");
 
     writeOutAck(&msg, response);
+    coloredPrintf("cyan", 0, "client %d received response for message %d and exit...\n", getpid(), msg.message_id);
 
     return 0;
 }
