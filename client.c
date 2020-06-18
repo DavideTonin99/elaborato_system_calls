@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
         msg.message_id = atoi(argv[3]);
         
         memcpy(msg.message, argv[4], strlen(argv[4]));
-        size_t len = strlen(msg.message);
+        size_t len = strlen(argv[4]);
         msg.message[len] = '\0';
 
         msg.max_distance = atof(argv[5]);
