@@ -51,7 +51,7 @@ void sigHandler(int sig)
 {
     coloredPrintf("red", 0, "<server> Close processes and exit...\n");
     // terminazione processo server e figli
-    if (kill(-getpid(), SIGTERM) == -1)
+    if (killpg(getpgrp(), SIGTERM) == -1)
         ErrExit("kill failed");
 
     // attende che terminano tutti figli
@@ -120,10 +120,10 @@ int main(int argc, char *argv[])
 
     changeSignalHandler();
 
-    coloredPrintf("cyan", 1, "<server> Initialization semaphores...\n");
+    coloredPrintf("cyan", 1, "<server> Initializing semaphores...\n");
     semid = initSemaphoreSet();
 
-    coloredPrintf("cyan", 1, "<server> Initialization shared memory...\n");
+    coloredPrintf("cyan", 1, "<server> Initializing shared memory...\n");
     // Crea i segmenti di memoria condivisa
     shmid_board = allocSharedMemory(IPC_PRIVATE, sizeof(pid_t) * BOARD_ROWS * BOARD_COLS);
     shmid_acklist = allocSharedMemory(IPC_PRIVATE, sizeof(Acknowledgment) * SIZE_ACK_LIST);

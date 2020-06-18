@@ -34,7 +34,7 @@ void ackManagerFreeResources()
 
 void ackManagerSigHandler(int sig)
 {
-    coloredPrintf("red", 0, "<ack manager pid: %d>remove resources and exit...    segnale %d\n", getpid(), sig);
+    coloredPrintf("red", 0, "<ack manager pid: %d>remove resources and exit...\n", getpid());
     ackManagerFreeResources();
     exit(0);
 }
