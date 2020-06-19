@@ -113,7 +113,6 @@ void writeOutAck(Message *msg, Response response)
 
     for (int i = 0; i < N_DEVICES; i++) {
         memset(buffer, 0, sizeof(buffer));   
-        // TODO scrittura su file
         char timestamp[20];
         strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&response.ack[i].timestamp));
         sprintf(buffer, "%d, %d, %s\n", response.ack[i].pid_sender, response.ack[i].pid_receiver, timestamp);
@@ -152,6 +151,11 @@ int main(int argc, char *argv[])
         
         memcpy(msg.message, argv[4], strlen(argv[4]));
         size_t len = strlen(argv[4]);
+        // messaggio vuoto : errore
+        if (len == 1) {
+            coloredPrintf("red", 1, "Messaggio non valido!\n");
+            exit(1);
+        }
         msg.message[len] = '\0';
 
         msg.max_distance = atof(argv[5]);
@@ -175,6 +179,11 @@ int main(int argc, char *argv[])
         coloredPrintf("green", 1, "Insert message: ");
         fgets(msg.message, sizeof(msg.message), stdin);
         len = strlen(msg.message);
+        // messaggio vuoto : errore
+        if (len == 1) {
+            coloredPrintf("red", 1, "Messaggio non valido!\n");
+            exit(1);
+        }
         msg.message[len - 1] = '\0';
 
         coloredPrintf("green", 1, "Insert max distance: ");
