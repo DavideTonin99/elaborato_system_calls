@@ -207,7 +207,7 @@ pid_t searchAvailableDevice(Position *position, int message_id, double max_dista
         for (int col = col_min; col < col_max && result == 0; col++) {
             distance = sqrt((double)(pow(position->row - row, 2) + pow(position->col - col, 2)));
             int offset = row*BOARD_COLS+col;
-            if (shm_ptr_board[offset] > 0 && shm_ptr_board[offset] != getpid() && distance <= max_distance && !ackListContains(shm_ptr_acklist, shm_ptr_board[offset], message_id)) {
+            if (shm_ptr_board[offset] > 0 && shm_ptr_board[offset] != getpid() && distance < max_distance && !ackListContains(shm_ptr_acklist, shm_ptr_board[offset], message_id)) {
                 result = shm_ptr_board[offset];
             }
         }
