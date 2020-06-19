@@ -47,6 +47,7 @@ clean:
 	@rm -vf server
 	@rm -vf client
 	@rm -vf /tmp/dev_fifo.*
+	@rm -vrf out/
 	@ipcrm -a
 	@echo "Removed object files and executables..."
 

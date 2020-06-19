@@ -27,6 +27,7 @@ do
         rand_col=$(((RANDOM % ${BOARD_COLS})))
         pos+="${rand_row},${rand_col}|"
     done
+    pos=${pos:0:${#pos}-1}
     echo "${pos}" >> input/file_posizioni.txt
 
 done

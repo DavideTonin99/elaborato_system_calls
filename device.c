@@ -19,6 +19,7 @@ L'ultimo device che riceve il messaggio, lo cancella.
 #include "sys/stat.h"
 #include "string.h"
 #include "time.h"
+#include "math.h"
 
 #include "defines.h"
 #include "err_exit.h"
@@ -200,11 +201,15 @@ pid_t searchAvailableDevice(Position *position, int message_id, double max_dista
     int row_max = (position->row + max_distance + 1) < BOARD_ROWS ? (position->col + max_distance + 1) : BOARD_ROWS;
     int col_max = (position->col + max_distance + 1) < BOARD_COLS ? (position->col + max_distance + 1) : BOARD_COLS;
 
+    double distance;
+
     for (int row = row_min; row < row_max && result == 0; row++) {
         for (int col = col_min; col < col_max && result == 0; col++) {
+            distance = sqrt((double)(pow(position->row - row, 2) + pow(position->col - col, 2)));
             int offset = row*BOARD_COLS+col;
-            if (shm_ptr_board[offset] > 0 && shm_ptr_board[offset] != getpid() && !ackListContains(shm_ptr_acklist, shm_ptr_board[offset], message_id))
+            if (shm_ptr_board[offset] > 0 && shm_ptr_board[offset] != getpid() && distance <= max_distance && !ackListContains(shm_ptr_acklist, shm_ptr_board[offset], message_id)) {
                 result = shm_ptr_board[offset];
+            }
         }
     }
     return result;
